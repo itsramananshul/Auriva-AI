@@ -126,20 +126,22 @@ export async function initOnboarding() {
     const btn  = document.getElementById('btn-onboard');
     btn.disabled = true; btn.textContent = 'Saving...';
 
-    const { error } = await sb.from('profiles').upsert({
-      id: session.user.id,
-      full_name: session.user.user_metadata?.full_name || '',
-      deity: selectedDeity.name,
-      source: selectedDeity.source,
-      language: lang,
-      onboarded: true
-    });
-
-    btn.disabled = false; btn.textContent = 'Enter Auriva AI';
-    if (error) {
-      document.getElementById('onboard-err').textContent = error.message;
-    } else {
+    try {
+      if (!sb) throw new Error('Not connected — check environment variables in Vercel.');
+      const { error } = await sb.from('profiles').upsert({
+        id: session.user.id,
+        full_name: session.user.user_metadata?.full_name || '',
+        deity: selectedDeity.name,
+        source: selectedDeity.source,
+        language: lang,
+        onboarded: true
+      });
+      if (error) throw new Error(error.message);
       window.location.href = 'app.html';
+    } catch (err) {
+      document.getElementById('onboard-err').textContent = err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enter Auriva AI';
     }
   });
 }

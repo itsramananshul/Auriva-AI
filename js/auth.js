@@ -35,10 +35,15 @@ export async function handleLogin() {
   const btn = document.getElementById('btn-login');
   setLoading(btn, 'Entering...', true);
 
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-
-  setLoading(btn, 'Enter the Wisdom', false);
-  if (error) setAuthErr(error.message);
+  try {
+    if (!sb) throw new Error('Not connected. Run via `vercel dev` locally.');
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) setAuthErr(error.message);
+  } catch (err) {
+    setAuthErr(err.message);
+  } finally {
+    setLoading(btn, 'Enter the Wisdom', false);
+  }
 }
 
 export async function handleSignup() {
@@ -52,14 +57,19 @@ export async function handleSignup() {
   const btn = document.getElementById('btn-signup');
   setLoading(btn, 'Creating...', true);
 
-  const { error } = await sb.auth.signUp({
-    email, password: pass,
-    options: { data: { full_name: name } }
-  });
-
-  setLoading(btn, 'Begin the Journey', false);
-  if (error) setAuthErr(error.message);
-  else setAuthErr('Check your email to confirm your account.');
+  try {
+    if (!sb) throw new Error('Not connected. Run via `vercel dev` locally.');
+    const { error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: { full_name: name } }
+    });
+    if (error) setAuthErr(error.message);
+    else setAuthErr('Check your email to confirm your account.');
+  } catch (err) {
+    setAuthErr(err.message);
+  } finally {
+    setLoading(btn, 'Begin the Journey', false);
+  }
 }
 
 export async function handleSignout() {
