@@ -19,11 +19,14 @@ export async function loadDailyVerseCard() {
 export function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mob-nav-item').forEach(n => n.classList.remove('active'));
 
-  const page = document.getElementById(`page-${name}`);
-  const nav  = document.querySelector(`.nav-item[data-page="${name}"]`);
-  if (page) page.classList.add('active');
-  if (nav)  nav.classList.add('active');
+  const page    = document.getElementById(`page-${name}`);
+  const nav     = document.querySelector(`.nav-item[data-page="${name}"]`);
+  const mobNav  = document.querySelector(`.mob-nav-item[data-page="${name}"]`);
+  if (page)   page.classList.add('active');
+  if (nav)    nav.classList.add('active');
+  if (mobNav) mobNav.classList.add('active');
 
   const titles = {
     seek:        'Seek <span>Wisdom</span>',
@@ -88,6 +91,10 @@ function renderScriptures() {
 
 export function initNavigation() {
   document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => showPage(item.dataset.page));
+  });
+
+  document.querySelectorAll('.mob-nav-item').forEach(item => {
     item.addEventListener('click', () => showPage(item.dataset.page));
   });
 

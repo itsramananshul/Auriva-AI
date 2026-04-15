@@ -125,3 +125,78 @@ html, body { overflow: hidden; }
 /* ── PAGES ── */
 .page { display: none; flex: 1; overflow: hidden; flex-direction: column; }
 .page.active { display: flex; }
+
+/* ── MOBILE NAV (hidden on desktop) ── */
+.mobile-nav { display: none; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  html, body { overflow: hidden; }
+
+  /* Stack layout — no sidebar */
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    height: 100dvh;
+  }
+
+  .sidebar { display: none; }
+
+  .main {
+    height: 100dvh;
+    padding-bottom: 60px; /* space for bottom nav */
+  }
+
+  /* Compact topbar */
+  .topbar {
+    padding: 0.85rem 1rem;
+  }
+  .page-ttl { font-size: 18px; }
+
+  /* Content padding */
+  .content { padding: 1rem; gap: 1rem; }
+  .input-area { padding: 0.75rem 1rem; }
+
+  /* Verse card */
+  .verse-card { padding: 1.1rem; }
+  .verse-sanskrit { font-size: 15px; }
+
+  /* Chat bubbles */
+  .msg-bubble { max-width: 90%; font-size: 13px; }
+
+  /* Quick chips scroll */
+  .quick-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .quick-chips::-webkit-scrollbar { display: none; }
+
+  /* Daily / Scriptures / Saved pages */
+  .dv-page, .sc-page, .saved-page { padding: 1rem; }
+  .dv-hero { padding: 2rem 1.25rem; }
+  .sc-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  /* Bottom nav */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: var(--surface);
+    border-top: 0.5px solid var(--border);
+    z-index: 100;
+  }
+  .mob-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+  .mob-nav-item svg { width: 18px; height: 18px; }
+  .mob-nav-item.active { color: var(--gold); }
+  .mob-nav-item span { font-family: 'Outfit', sans-serif; }
+}
