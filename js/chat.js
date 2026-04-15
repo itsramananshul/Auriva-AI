@@ -1,6 +1,10 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS } from './config.js';
 import { getProfile, sb } from './app.js';
+import { marked } from 'https://cdn.jsdelivr.net/npm/marked@9/+esm';
+
+// Configure marked — no wrapping <p> on single lines, safe output
+marked.setOptions({ breaks: true, gfm: true });
 
 // ─── State ───
 let _currentChatId = null;
@@ -235,11 +239,15 @@ export function appendMsg(role, content, verse = null, persist = true) {
       <div class="iv-trans">${verse.translation}</div>
     </div>` : '';
 
+  const bubbleContent = isUser
+    ? content.replace(/\n/g, '<br>')
+    : marked.parse(content);
+
   const div = document.createElement('div');
   div.className = `msg ${isUser ? 'user' : 'ai'}`;
   div.innerHTML = `
     <div class="msg-av">${isUser ? initial : '॥'}</div>
-    <div class="msg-bubble">${content}${verseHTML}</div>`;
+    <div class="msg-bubble">${bubbleContent}${verseHTML}</div>`;
 
   container.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
