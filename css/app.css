@@ -171,8 +171,8 @@ html, body { overflow: hidden; }
 .mob-menu-btn { display: none; }
 .mob-overlay  { display: none; }
 
-/* ── MOBILE BOTTOM NAV (hidden on desktop) ── */
-.mobile-nav { display: none; }
+/* ── MOBILE BOTTOM NAV (disabled — sidebar covers all navigation) ── */
+.mobile-nav { display: none !important; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
@@ -228,7 +228,6 @@ html, body { overflow: hidden; }
   /* Main fills screen */
   .main {
     height: 100dvh;
-    padding-bottom: 60px;
     overflow-x: hidden;
     width: 100%;
     box-sizing: border-box;
