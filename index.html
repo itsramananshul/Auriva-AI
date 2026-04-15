@@ -57,11 +57,10 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js"></script>
-<script type="module" src="js/auth.js"></script>
 <script type="module">
+  import './js/app.js';
   import { initAuth } from './js/auth.js';
-  document.addEventListener('DOMContentLoaded', initAuth);
+  initAuth();
 </script>
 </body>
 </html>

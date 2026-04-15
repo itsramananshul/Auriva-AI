@@ -22,6 +22,7 @@ export const getProfile = () => _profile;
 
 // ─── Boot ───
 async function boot() {
+  if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
 
   if (session?.user) {
