@@ -4,8 +4,17 @@ import { initChat, appendMsg } from './chat.js';
 import { initNavigation, loadDailyVerseCard, showPage } from './pages.js';
 
 // ─── Supabase client (shared) ───
-const { supabaseUrl, supabaseAnonKey } = await fetch('/api/app-config').then(r => r.json());
-export const sb = createClient(supabaseUrl, supabaseAnonKey);
+// Keys are loaded from the server — run via `vercel dev` locally
+let _sb = null;
+try {
+  const cfg = await fetch('/api/app-config').then(r => r.json());
+  if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+    _sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  }
+} catch {
+  console.error('[Auriva] Could not load config. Run the app via `vercel dev`.');
+}
+export const sb = _sb;
 
 // ─── Profile state ───
 let _profile = null;
