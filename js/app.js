@@ -99,12 +99,10 @@ function initApp(user, profile) {
 }
 
 // ─── Onboarding (onboard.html only) ───
-export async function initOnboarding() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) { window.location.href = 'index.html'; return; }
-
+export function initOnboarding() {
   let selectedDeity = null;
 
+  // Deity selection — works immediately, no auth needed
   document.querySelectorAll('.deity-opt').forEach(opt => {
     opt.addEventListener('click', () => {
       document.querySelectorAll('.deity-opt').forEach(o => o.classList.remove('selected'));
@@ -113,6 +111,7 @@ export async function initOnboarding() {
     });
   });
 
+  // Save — auth check happens here
   document.getElementById('btn-onboard')?.addEventListener('click', async () => {
     if (!selectedDeity) {
       document.getElementById('onboard-err').textContent = 'Please select a deity.';
@@ -124,6 +123,8 @@ export async function initOnboarding() {
 
     try {
       if (!sb) throw new Error('Not connected — check environment variables in Vercel.');
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user) throw new Error('Not logged in.');
       const { error } = await sb.from('profiles').upsert({
         id: session.user.id,
         full_name: session.user.user_metadata?.full_name || '',
