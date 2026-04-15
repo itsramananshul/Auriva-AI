@@ -1,8 +1,10 @@
 import { fetchVerseForQuery, generateWisdomResponse } from './api.js';
 import { QUICK_PROMPTS } from './config.js';
-import { getProfile } from './app.js';
+import { getProfile, sb } from './app.js';
 
-export function initChat() {
+export async function initChat() {
+  await loadChatHistory();
+
   const input  = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
 
@@ -72,7 +74,43 @@ export async function sendMessage() {
   sendBtn.disabled = false;
 }
 
-export function appendMsg(role, content, verse = null) {
+async function loadChatHistory() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return;
+
+  const { data: msgs } = await sb
+    .from('messages')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: true })
+    .limit(100);
+
+  if (!msgs?.length) return;
+
+  // Hide quick chips if there's history
+  const chips = document.getElementById('quick-chips');
+  if (chips) chips.style.display = 'none';
+
+  msgs.forEach(msg => appendMsg(msg.role, msg.content, msg.verse_data, false));
+}
+
+async function saveMessage(role, content, verse = null) {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return;
+
+  await sb.from('messages').insert({
+    user_id:    session.user.id,
+    role,
+    content,
+    verse_data: verse || null
+  });
+}
+
+export function appendMsg(role, content, verse = null, persist = true) {
+  if (persist) saveMessage(role, content, verse);
+
   const container = document.getElementById('chat-messages');
   if (!container) return;
 
