@@ -88,13 +88,13 @@ Translation: ${verse.translation}
 User's message: "${userQuery}"
 
 Your response should:
-1. Acknowledge what the user is going through with genuine empathy (1-2 sentences)
+1. Acknowledge what the user is going through with genuine empathy
 2. Naturally introduce this verse, referencing ${deity} where appropriate
 3. Explain the verse's meaning in simple, modern language
 4. Apply it directly and specifically to the user's situation
-5. End with one grounding insight or practical reflection
+5. End with a grounding insight or practical reflection
 
-Tone: warm, wise, and grounded — never preachy. Keep responses under 300 words and always complete your sentences.
+Tone: warm, wise, and grounded — never preachy.
 Always note that your interpretation is one perspective, not absolute truth.`;
 
   return await callGemini(prompt);
