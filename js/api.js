@@ -70,8 +70,8 @@ export async function callGemini(prompt) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })
   });
-  if (!res.ok) throw new Error(`Chat error: ${res.status}`);
   const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || `Chat error: ${res.status}`);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 

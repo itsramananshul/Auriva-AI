@@ -28,15 +28,16 @@ async function boot() {
   if (session?.user) {
     await handleSession(session.user);
   } else {
-    // Not logged in — show auth if on app page
     if (window.location.pathname.includes('app.html')) {
       window.location.href = 'index.html';
     }
   }
 
-  // Listen for auth changes
+  // Only handle SIGNED_IN when there was no existing session (fresh login)
+  let initialised = !!session?.user;
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
+    if (event === 'SIGNED_IN' && session?.user && !initialised) {
+      initialised = true;
       await handleSession(session.user);
     }
     if (event === 'SIGNED_OUT') {

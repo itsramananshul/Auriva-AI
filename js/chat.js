@@ -65,7 +65,7 @@ export async function sendMessage() {
     appendMsg('ai', response, verse.sanskrit ? verse : null);
   } catch (err) {
     removeTyping();
-    appendMsg('ai', 'Something went wrong connecting to the wisdom stream. Please check your API keys and try again.');
+    appendMsg('ai', `Error: ${err.message}`);
     console.error(err);
   }
 
