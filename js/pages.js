@@ -53,15 +53,22 @@ function renderDailyPage() {
 }
 
 export async function refreshDailyVerse() {
-  dailyVerse = await fetchRandomVerse();
-  renderDailyPage();
-  // Also refresh mini card
-  const sans  = document.getElementById('mini-sanskrit');
-  const trans = document.getElementById('mini-trans');
-  const ref   = document.getElementById('mini-ref');
-  if (ref)   ref.textContent  = `Bhagavad Gita · Ch. ${dailyVerse.chapter} · V. ${dailyVerse.verse}`;
-  if (sans)  sans.textContent = dailyVerse.sanskrit;
-  if (trans) trans.textContent = dailyVerse.translation;
+  const btn = document.getElementById('btn-new-verse');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+
+  try {
+    dailyVerse = await fetchRandomVerse();
+    renderDailyPage();
+    // Also refresh mini card
+    const sans  = document.getElementById('mini-sanskrit');
+    const trans = document.getElementById('mini-trans');
+    const ref   = document.getElementById('mini-ref');
+    if (ref)   ref.textContent  = `Bhagavad Gita · Ch. ${dailyVerse.chapter} · V. ${dailyVerse.verse}`;
+    if (sans)  sans.textContent = dailyVerse.sanskrit;
+    if (trans) trans.textContent = dailyVerse.translation;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Show another verse'; }
+  }
 }
 
 function renderScriptures() {

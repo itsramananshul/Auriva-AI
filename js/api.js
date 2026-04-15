@@ -1,38 +1,24 @@
-import { GITA_BASE, VERSE_COUNTS } from './config.js';
+// ─── Daily Verse (Gemini-powered — no external API dependency) ───
 
-// ─── GITA API (used for Daily Verse only) ───
-
-export async function fetchVerseByRef(chapter, verse) {
+export async function fetchRandomVerse() {
   try {
-    const res = await fetch(`${GITA_BASE}/chapters/${chapter}/verses/${verse}/`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    return {
-      chapter,
-      verse,
-      sanskrit:    data.text || '',
-      translation: data.translations?.[0]?.description || data.meaning?.en || '',
-    };
+    const seed = Date.now() + Math.random(); // unique seed every call
+    const res = await fetch(`/api/daily-verse?seed=${seed}`);
+    if (!res.ok) throw new Error('verse API error');
+    return await res.json();
   } catch {
-    return getFallbackVerse(chapter, verse);
+    // Last-resort fallback
+    return {
+      chapter: 2, verse: 47,
+      sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
+      translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'
+    };
   }
 }
 
-export async function fetchRandomVerse() {
-  const ch = Math.floor(Math.random() * 18) + 1;
-  const maxV = VERSE_COUNTS[ch - 1] || 20;
-  const v = Math.floor(Math.random() * maxV) + 1;
-  return await fetchVerseByRef(ch, v);
-}
-
-function getFallbackVerse(ch, v) {
-  return {
-    chapter: ch, verse: v,
-    sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
-    translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'
-  };
+// fetchVerseByRef kept for any future use
+export async function fetchVerseByRef(chapter, verse) {
+  return fetchRandomVerse(); // delegate to Gemini; specific ref unused in current UI
 }
 
 // ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───

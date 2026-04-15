@@ -1,5 +1,3 @@
-export const GITA_BASE = 'https://bhagavadgita.io/api/v1';
-
 // ─── Chapter metadata ───
 export const CHAPTER_NAMES = [
   'Arjuna Vishada Yoga',       'Sankhya Yoga',
