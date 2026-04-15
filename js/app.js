@@ -125,6 +125,7 @@ export function initOnboarding() {
       if (!sb) throw new Error('Not connected — check environment variables in Vercel.');
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user) throw new Error('Not logged in.');
+
       const { error } = await sb.from('profiles').upsert({
         id: session.user.id,
         full_name: session.user.user_metadata?.full_name || '',
@@ -132,7 +133,9 @@ export function initOnboarding() {
         source: selectedDeity.source,
         language: lang,
         onboarded: true
-      });
+      }, { onConflict: 'id' });
+
+      console.log('upsert error:', error);
       if (error) throw new Error(error.message);
       window.location.href = 'app.html';
     } catch (err) {
