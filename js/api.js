@@ -1,6 +1,6 @@
-import { GITA_BASE, TOPIC_MAP, VERSE_COUNTS } from './config.js';
+import { GITA_BASE, VERSE_COUNTS } from './config.js';
 
-// ─── GITA API ───
+// ─── GITA API (used for Daily Verse only) ───
 
 export async function fetchVerseByRef(chapter, verse) {
   try {
@@ -27,75 +27,55 @@ export async function fetchRandomVerse() {
   return await fetchVerseByRef(ch, v);
 }
 
-export async function fetchVerseForQuery(userQuery) {
-  const q = userQuery.toLowerCase();
-  let refs = TOPIC_MAP.default;
-
-  for (const [keyword, verses] of Object.entries(TOPIC_MAP)) {
-    if (keyword !== 'default' && q.includes(keyword)) {
-      refs = verses;
-      break;
-    }
-  }
-
-  const ref = refs[Math.floor(Math.random() * refs.length)];
-  return await fetchVerseByRef(ref.ch, ref.v);
-}
-
 function getFallbackVerse(ch, v) {
-  const fallbacks = {
-    '2-47': {
-      sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
-      translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'
-    },
-    '2-14': {
-      sanskrit: 'मात्रास्पर्शास्तु कौन्तेय शीतोष्णसुखदु:खदा:।\nआगमापायिनोऽनित्यास्तांस्तितिक्षस्व भारत॥',
-      translation: 'O son of Kunti, the contact between the senses and the sense objects gives rise to fleeting perceptions of happiness and distress. These are non-permanent; they come and go. Bear them patiently, O Bharata.'
-    },
-    '18-66': {
-      sanskrit: 'सर्वधर्मान्परित्यज्य मामेकं शरणं व्रज।\nअहं त्वां सर्वपापेभ्यो मोक्षयिष्यामि मा शुच:॥',
-      translation: 'Abandon all varieties of dharma and simply surrender unto Me alone. I shall liberate you from all sinful reactions; do not fear.'
-    }
+  return {
+    chapter: ch, verse: v,
+    sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
+    translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'
   };
-  const key = `${ch}-${v}`;
-  const fb = fallbacks[key] || fallbacks['2-47'];
-  return { chapter: ch, verse: v, ...fb };
 }
 
-// ─── GEMINI FLASH ───
+// ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───
 
-export async function callGemini(prompt) {
+export async function generateResponse(userQuery, history, profile) {
+  const deity = profile?.deity || 'Lord Krishna';
+
+  const systemPrompt = `You are a deeply learned Hindu pandit and spiritual guide — warm, wise, and human. You have spent decades with the Bhagavad Gita and you speak to people the way a trusted guru would: personally, naturally, and from the heart. Not like an AI. Not like a textbook.
+
+Your devotee's chosen deity is ${deity}. Weave their presence naturally into your guidance where it fits.
+
+When someone comes to you:
+
+1. Feel what they are going through. Acknowledge the real human emotion behind their words before anything else.
+
+2. Search the full 18 chapters of the Bhagavad Gita and find the shloka that MOST PRECISELY speaks to this person's specific situation. Not the most famous verse — the RIGHT verse. Different struggles deserve different shlokas.
+
+3. Share the shloka: write it first in Devanagari Sanskrit, then give its meaning in clear, modern language.
+
+4. Bridge the ancient to the present. Show this person exactly how that verse applies to what they are living through right now — with real-world examples, practical insight, and genuine understanding.
+
+5. Speak naturally, like one human to another. No bullet points in your response. No "In conclusion." No robotic structure. Let the wisdom flow.
+
+6. If this is a follow-up to something already discussed, acknowledge that thread. A good guru remembers. Build on what was shared. Do not ignore the previous conversation.
+
+Never repeat the same shloka twice in one conversation unless it is truly the only answer. Your knowledge spans all 700 verses — use it.`;
+
+  // Build Gemini contents: full conversation history + current question
+  const contents = [
+    ...history.map(m => ({
+      role: m.role, // 'user' or 'model'
+      parts: [{ text: m.content }]
+    })),
+    { role: 'user', parts: [{ text: userQuery }] }
+  ];
+
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify({ contents, systemPrompt })
   });
+
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || `Chat error: ${res.status}`);
+  if (!res.ok) throw new Error(data?.error || `Error: ${res.status}`);
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-export async function generateWisdomResponse(userQuery, verse, profile) {
-  const deity = profile?.deity || 'Lord Krishna';
-  const prompt = `You are Auriva AI, a wisdom guide rooted in the Bhagavad Gita and Hindu scriptures.
-The user's preferred deity is ${deity}.
-
-You retrieved this verse for the user's situation:
-Reference: Bhagavad Gita, Chapter ${verse.chapter}, Verse ${verse.verse}
-Sanskrit: ${verse.sanskrit}
-Translation: ${verse.translation}
-
-User's message: "${userQuery}"
-
-Your response should:
-1. Acknowledge what the user is going through with genuine empathy
-2. Naturally introduce this verse, referencing ${deity} where appropriate
-3. Explain the verse's meaning in simple, modern language
-4. Apply it directly and specifically to the user's situation
-5. End with a grounding insight or practical reflection
-
-Tone: warm, wise, and grounded — never preachy.
-Always note that your interpretation is one perspective, not absolute truth.`;
-
-  return await callGemini(prompt);
 }

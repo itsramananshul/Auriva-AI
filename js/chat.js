@@ -1,9 +1,10 @@
-import { fetchVerseForQuery, generateWisdomResponse } from './api.js';
+import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS } from './config.js';
 import { getProfile, sb } from './app.js';
 
 // ─── State ───
 let _currentChatId = null;
+let _history = []; // { role: 'user'|'model', content: string } for Gemini context
 
 // ─── Init ───
 export async function initChat() {
@@ -29,6 +30,7 @@ export async function initChat() {
 // ─── New / switch chats ───
 export async function startNewChat() {
   _currentChatId = null;
+  _history = [];
   document.getElementById('chat-messages').innerHTML = '';
   const chips = document.getElementById('quick-chips');
   if (chips) chips.style.display = 'flex';
@@ -62,6 +64,7 @@ async function loadMostRecentChat() {
 export async function loadChat(chatId) {
   if (!sb) return;
   _currentChatId = chatId;
+  _history = [];
 
   const container = document.getElementById('chat-messages');
   if (container) container.innerHTML = '';
@@ -79,7 +82,14 @@ export async function loadChat(chatId) {
     renderQuickChips();
   } else {
     if (chips) chips.style.display = 'none';
-    msgs.forEach(m => appendMsg(m.role, m.content, m.verse_data, false));
+    msgs.forEach(m => {
+      // Rebuild in-memory history for Gemini context
+      _history.push({
+        role:    m.role === 'ai' ? 'model' : 'user',
+        content: m.content
+      });
+      appendMsg(m.role, m.content, m.verse_data, false);
+    });
   }
 
   // Mark active in sidebar
@@ -186,11 +196,15 @@ export async function sendMessage() {
   showTyping();
 
   try {
-    const verse    = await fetchVerseForQuery(text);
     const profile  = getProfile();
-    const response = await generateWisdomResponse(text, verse, profile);
+    // Pass full history (without current message — it's added inside generateResponse)
+    const response = await generateResponse(text, _history, profile);
     removeTyping();
-    appendMsg('ai', response, verse.sanskrit ? verse : null);
+    appendMsg('ai', response);
+
+    // Update in-memory history
+    _history.push({ role: 'user',  content: text });
+    _history.push({ role: 'model', content: response });
 
     // Title the chat from the first user message
     if (isFirstMsg) await titleChat(text);
