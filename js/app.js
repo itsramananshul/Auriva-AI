@@ -18,27 +18,20 @@ export const sb = _sb;
 
 // ─── Profile state ───
 let _profile = null;
+let _appReady = false;
 export const getProfile = () => _profile;
 
 // ─── Boot ───
 async function boot() {
   if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
 
-  if (session?.user) {
-    await handleSession(session.user);
-  } else {
-    if (window.location.pathname.includes('app.html')) {
-      window.location.href = 'index.html';
-    }
-  }
-
-  // Only handle SIGNED_IN when there was no existing session (fresh login)
-  let initialised = !!session?.user;
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user && !initialised) {
-      initialised = true;
-      await handleSession(session.user);
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      if (session?.user) {
+        await handleSession(session.user);
+      } else if (window.location.pathname.includes('app.html')) {
+        window.location.href = 'index.html';
+      }
     }
     if (event === 'SIGNED_OUT') {
       window.location.href = 'index.html';
@@ -70,6 +63,8 @@ async function handleSession(user) {
 }
 
 function initApp(user, profile) {
+  if (_appReady) return;
+  _appReady = true;
   // Sidebar
   const name = profile.full_name || user.user_metadata?.full_name || 'Seeker';
   setEl('sidebar-name', name);
