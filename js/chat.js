@@ -2,59 +2,185 @@ import { fetchVerseForQuery, generateWisdomResponse } from './api.js';
 import { QUICK_PROMPTS } from './config.js';
 import { getProfile, sb } from './app.js';
 
+// ─── State ───
+let _currentChatId = null;
+
+// ─── Init ───
 export async function initChat() {
-  await loadChatHistory();
-
-  const input  = document.getElementById('user-input');
+  const input   = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
-
   if (!input || !sendBtn) return;
 
-  // Auto-resize textarea
   input.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 100) + 'px';
   });
-
-  // Send on Enter (no shift)
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
-
   sendBtn.addEventListener('click', sendMessage);
 
+  document.getElementById('btn-new-chat')?.addEventListener('click', startNewChat);
+
+  await loadRecents();
+  await loadMostRecentChat();
+}
+
+// ─── New / switch chats ───
+export async function startNewChat() {
+  _currentChatId = null;
+  document.getElementById('chat-messages').innerHTML = '';
+  const chips = document.getElementById('quick-chips');
+  if (chips) chips.style.display = 'flex';
+  document.querySelectorAll('.recents-item').forEach(i => i.classList.remove('active'));
   renderQuickChips();
+
+  // Scroll seek page into view
+  const { showPage } = await import('./pages.js');
+  showPage('seek');
 }
 
-export function renderQuickChips() {
-  const el = document.getElementById('quick-chips');
-  if (!el) return;
-  el.innerHTML = QUICK_PROMPTS.map(p =>
-    `<div class="chip" data-prompt="${p}">${p}</div>`
-  ).join('');
-  el.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('user-input').value = chip.dataset.prompt;
-      sendMessage();
-    });
+async function loadMostRecentChat() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return;
+
+  const { data: chats } = await sb
+    .from('chats')
+    .select('id')
+    .eq('user_id', session.user.id)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (chats?.length) {
+    await loadChat(chats[0].id);
+  } else {
+    renderQuickChips();
+  }
+}
+
+export async function loadChat(chatId) {
+  if (!sb) return;
+  _currentChatId = chatId;
+
+  const container = document.getElementById('chat-messages');
+  if (container) container.innerHTML = '';
+
+  const { data: msgs } = await sb
+    .from('messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .order('created_at', { ascending: true });
+
+  const chips = document.getElementById('quick-chips');
+
+  if (!msgs?.length) {
+    if (chips) chips.style.display = 'flex';
+    renderQuickChips();
+  } else {
+    if (chips) chips.style.display = 'none';
+    msgs.forEach(m => appendMsg(m.role, m.content, m.verse_data, false));
+  }
+
+  // Mark active in sidebar
+  document.querySelectorAll('.recents-item').forEach(i => {
+    i.classList.toggle('active', i.dataset.chatId === chatId);
   });
+
+  const { showPage } = await import('./pages.js');
+  showPage('seek');
 }
 
+// ─── Create chat lazily on first message ───
+async function createChat() {
+  if (!sb) return null;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return null;
+
+  const { data: chat } = await sb
+    .from('chats')
+    .insert({ user_id: session.user.id, title: 'New Chat' })
+    .select()
+    .single();
+
+  if (!chat) return null;
+  _currentChatId = chat.id;
+
+  // Add to sidebar immediately
+  const list = document.getElementById('recents-list');
+  if (list) {
+    const empty = list.querySelector('.recents-empty');
+    if (empty) empty.remove();
+    const item = makeRecentEl(chat.id, 'New Chat');
+    list.prepend(item);
+  }
+
+  return chat.id;
+}
+
+async function titleChat(text) {
+  if (!_currentChatId || !sb) return;
+  const title = text.slice(0, 35).trimEnd() + (text.length > 35 ? '…' : '');
+  await sb.from('chats').update({ title }).eq('id', _currentChatId);
+
+  // Update sidebar
+  const el = document.querySelector(`.recents-item[data-chat-id="${_currentChatId}"]`);
+  if (el) el.textContent = title;
+}
+
+// ─── Recents ───
+export async function loadRecents() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return;
+
+  const { data: chats } = await sb
+    .from('chats')
+    .select('id, title')
+    .eq('user_id', session.user.id)
+    .order('updated_at', { ascending: false })
+    .limit(30);
+
+  const list = document.getElementById('recents-list');
+  if (!list) return;
+
+  if (!chats?.length) {
+    list.innerHTML = '<div class="recents-empty">No conversations yet</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  chats.forEach(c => list.appendChild(makeRecentEl(c.id, c.title)));
+}
+
+function makeRecentEl(chatId, title) {
+  const el = document.createElement('div');
+  el.className = 'recents-item';
+  el.dataset.chatId = chatId;
+  el.textContent = title;
+  el.addEventListener('click', () => loadChat(chatId));
+  return el;
+}
+
+// ─── Send ───
 export async function sendMessage() {
   const input   = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
   const chips   = document.getElementById('quick-chips');
   const text    = input?.value.trim();
-
   if (!text) return;
 
   input.value = '';
   input.style.height = 'auto';
   sendBtn.disabled = true;
   if (chips) chips.style.display = 'none';
+
+  // Lazy chat creation
+  const isFirstMsg = !_currentChatId;
+  if (!_currentChatId) {
+    const id = await createChat();
+    if (!id) { sendBtn.disabled = false; return; }
+  }
 
   appendMsg('user', text);
   showTyping();
@@ -65,6 +191,9 @@ export async function sendMessage() {
     const response = await generateWisdomResponse(text, verse, profile);
     removeTyping();
     appendMsg('ai', response, verse.sanskrit ? verse : null);
+
+    // Title the chat from the first user message
+    if (isFirstMsg) await titleChat(text);
   } catch (err) {
     removeTyping();
     appendMsg('ai', `Error: ${err.message}`);
@@ -74,47 +203,14 @@ export async function sendMessage() {
   sendBtn.disabled = false;
 }
 
-async function loadChatHistory() {
-  if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) return;
-
-  const { data: msgs } = await sb
-    .from('messages')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .order('created_at', { ascending: true })
-    .limit(100);
-
-  if (!msgs?.length) return;
-
-  // Hide quick chips if there's history
-  const chips = document.getElementById('quick-chips');
-  if (chips) chips.style.display = 'none';
-
-  msgs.forEach(msg => appendMsg(msg.role, msg.content, msg.verse_data, false));
-}
-
-async function saveMessage(role, content, verse = null) {
-  if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) return;
-
-  await sb.from('messages').insert({
-    user_id:    session.user.id,
-    role,
-    content,
-    verse_data: verse || null
-  });
-}
-
+// ─── Render message ───
 export function appendMsg(role, content, verse = null, persist = true) {
   if (persist) saveMessage(role, content, verse);
 
   const container = document.getElementById('chat-messages');
   if (!container) return;
 
-  const isUser = role === 'user';
+  const isUser  = role === 'user';
   const profile = getProfile();
   const initial = profile?.full_name?.[0]?.toUpperCase() || 'U';
 
@@ -135,12 +231,42 @@ export function appendMsg(role, content, verse = null, persist = true) {
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
+// ─── Quick chips ───
+export function renderQuickChips() {
+  const el = document.getElementById('quick-chips');
+  if (!el) return;
+  el.innerHTML = QUICK_PROMPTS.map(p =>
+    `<div class="chip" data-prompt="${p}">${p}</div>`
+  ).join('');
+  el.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('user-input').value = chip.dataset.prompt;
+      sendMessage();
+    });
+  });
+}
+
+// ─── Persist ───
+async function saveMessage(role, content, verse = null) {
+  if (!sb || !_currentChatId) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return;
+
+  await sb.from('messages').insert({
+    user_id:    session.user.id,
+    chat_id:    _currentChatId,
+    role,
+    content,
+    verse_data: verse || null
+  });
+}
+
+// ─── Typing indicator ───
 function showTyping() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
   const div = document.createElement('div');
-  div.className = 'msg ai';
-  div.id = 'typing-msg';
+  div.className = 'msg ai'; div.id = 'typing-msg';
   div.innerHTML = `
     <div class="msg-av">॥</div>
     <div class="msg-bubble">

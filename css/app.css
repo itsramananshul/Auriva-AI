@@ -13,7 +13,7 @@ html, body { overflow: hidden; }
   display: flex;
   flex-direction: column;
   padding: 1.75rem 1.25rem;
-  gap: 1.5rem;
+  gap: 1rem;
   overflow: hidden;
 }
 
@@ -66,6 +66,47 @@ html, body { overflow: hidden; }
 }
 .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
 .nav-item.active svg { opacity: 1; }
+
+/* New Chat button */
+.new-chat-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px; border-radius: 6px;
+  font-size: 12px; color: var(--gold);
+  border: 0.5px solid var(--border-bright);
+  background: transparent; cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.new-chat-btn:hover { background: var(--gold-glow); }
+
+/* Recents section */
+.recents-section {
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0; overflow: hidden;
+}
+.recents-lbl {
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 6px; padding-left: 8px; flex-shrink: 0;
+}
+.recents-list {
+  overflow-y: auto; flex: 1;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.recents-list::-webkit-scrollbar { width: 2px; }
+.recents-item {
+  padding: 8px 10px; border-radius: 6px;
+  font-size: 12.5px; color: var(--text-muted);
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; flex-shrink: 0;
+}
+.recents-item:hover { color: var(--text); background: var(--surface2); }
+.recents-item.active { color: var(--gold); background: rgba(201,168,76,0.07); }
+.recents-empty {
+  font-size: 12px; color: var(--text-muted);
+  font-style: italic; padding: 8px 10px;
+}
 
 .deity-card {
   margin-top: auto;

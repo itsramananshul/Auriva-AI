@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { initAuth, handleSignout } from './auth.js';
-import { initChat, appendMsg } from './chat.js';
+import { initChat, appendMsg, loadRecents } from './chat.js';
 import { initNavigation, loadDailyVerseCard, showPage } from './pages.js';
 
 // ─── Supabase client (shared) ───
@@ -67,7 +67,7 @@ async function handleSession(user) {
   initApp(user, profile);
 }
 
-function initApp(user, profile) {
+async function initApp(user, profile) {
   if (_appReady) return;
   _appReady = true;
   // Sidebar
@@ -81,20 +81,8 @@ function initApp(user, profile) {
 
   // Init modules
   initNavigation();
-  initChat();
+  await initChat();
   loadDailyVerseCard();
-
-  // Welcome message
-  const firstName = name.split(' ')[0];
-  const deity = profile.deity || 'Lord Krishna';
-  const welcomes = [
-    `Namaste, ${firstName}. ${deity} awaits your questions. What weighs on your heart today?`,
-    `Welcome back, ${firstName}. The Gita holds answers for every struggle. What would you like to explore?`,
-    `${firstName}, the wisdom of the ages is ready for you. Ask freely — no question is too small or too large.`
-  ];
-  setTimeout(() => {
-    appendMsg('ai', welcomes[Math.floor(Math.random() * welcomes.length)]);
-  }, 400);
 
   // Signout
   document.getElementById('btn-signout')?.addEventListener('click', handleSignout);
