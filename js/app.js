@@ -25,13 +25,18 @@ export const getProfile = () => _profile;
 async function boot() {
   if (!sb) return;
 
+  // Check session once on page load
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    await handleSession(session.user);
+  } else if (window.location.pathname.includes('app.html')) {
+    window.location.href = 'index.html';
+  }
+
+  // Then listen only for live login / logout events
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-      if (session?.user) {
-        await handleSession(session.user);
-      } else if (window.location.pathname.includes('app.html')) {
-        window.location.href = 'index.html';
-      }
+    if (event === 'SIGNED_IN' && session?.user) {
+      await handleSession(session.user);
     }
     if (event === 'SIGNED_OUT') {
       window.location.href = 'index.html';
