@@ -94,7 +94,7 @@ Your response should:
 4. Apply it directly and specifically to the user's situation
 5. End with one grounding insight or practical reflection
 
-Tone: warm, wise, and grounded — never preachy. Be concise (under 220 words).
+Tone: warm, wise, and grounded — never preachy. Keep responses under 300 words and always complete your sentences.
 Always note that your interpretation is one perspective, not absolute truth.`;
 
   return await callGemini(prompt);
