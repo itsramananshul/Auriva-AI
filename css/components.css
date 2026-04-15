@@ -1,8 +1,9 @@
 /* ── SEEK PAGE ── */
 .content {
-  flex: 1; overflow-y: auto;
+  flex: 1; overflow-y: auto; overflow-x: hidden;
   padding: 1.75rem 2rem;
   display: flex; flex-direction: column; gap: 1.25rem;
+  width: 100%; box-sizing: border-box; min-width: 0;
 }
 
 /* Verse Card */
@@ -137,6 +138,7 @@
   padding: 1.25rem 2rem;
   border-top: 0.5px solid var(--border);
   flex-shrink: 0;
+  width: 100%; box-sizing: border-box;
 }
 .quick-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
 .chip {
@@ -155,6 +157,7 @@
   border: 0.5px solid var(--border-bright);
   border-radius: 10px; padding: 10px 14px;
   transition: border-color 0.2s;
+  width: 100%; box-sizing: border-box; min-width: 0;
 }
 .input-wrap:focus-within { border-color: var(--gold); }
 #user-input {

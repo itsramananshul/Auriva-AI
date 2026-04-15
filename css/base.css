@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500&display=swap');
 
 *{margin:0;padding:0;box-sizing:border-box;}
+html{overflow-x:hidden;max-width:100vw;}
+body{overflow-x:hidden;max-width:100vw;}
 
 :root{
   --gold:#C9A84C;
