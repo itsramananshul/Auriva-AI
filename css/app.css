@@ -244,6 +244,9 @@ html, body { overflow: hidden; }
 
   /* Chat bubbles */
   .msg-bubble { max-width: 92%; font-size: 13px; line-height: 1.65; }
+  .msg.ai .msg-bubble ul, .msg.ai .msg-bubble ol { padding-left: 1em; }
+  .msg.ai .msg-bubble p { margin-bottom: 0.5em; }
+  .msg.ai .msg-bubble strong { font-size: 13px; }
 
   /* Quick chips — horizontal scroll */
   .quick-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
