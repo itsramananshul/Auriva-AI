@@ -87,6 +87,19 @@ async function initApp(user, profile) {
   // Signout
   document.getElementById('btn-signout')?.addEventListener('click', handleSignout);
 
+  // Mobile drawer
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('mob-overlay');
+  const openDrawer  = () => { sidebar.classList.add('open');    overlay.classList.add('visible'); };
+  const closeDrawer = () => { sidebar.classList.remove('open'); overlay.classList.remove('visible'); };
+  document.getElementById('mob-menu-btn')?.addEventListener('click', openDrawer);
+  overlay?.addEventListener('click', closeDrawer);
+  // Close drawer when a nav item or recent chat is tapped
+  document.querySelectorAll('.nav-item, .new-chat-btn').forEach(el =>
+    el.addEventListener('click', closeDrawer)
+  );
+  document.getElementById('recents-list')?.addEventListener('click', closeDrawer);
+
   // Default page
   showPage('seek');
 }
