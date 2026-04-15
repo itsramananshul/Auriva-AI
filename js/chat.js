@@ -1,10 +1,26 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS } from './config.js';
 import { getProfile, sb } from './app.js';
-import { marked } from 'https://cdn.jsdelivr.net/npm/marked@9/+esm';
-
-// Configure marked — no wrapping <p> on single lines, safe output
-marked.setOptions({ breaks: true, gfm: true });
+// Simple markdown renderer — no external dependency
+function renderMarkdown(text) {
+  return text
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic (only if not a bullet line)
+    .replace(/(?<!\n)\*(?!\s)(.+?)\*/g, '<em>$1</em>')
+    // Headings
+    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
+    // Bullet points: lines starting with - or *
+    .replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/(<li>.*<\/li>(\n|$))+/g, m => `<ul>${m}</ul>`)
+    // Blank lines → paragraph break
+    .replace(/\n{2,}/g, '<br><br>')
+    // Single newlines → line break
+    .replace(/\n/g, '<br>');
+}
 
 // ─── State ───
 let _currentChatId = null;
@@ -241,7 +257,7 @@ export function appendMsg(role, content, verse = null, persist = true) {
 
   const bubbleContent = isUser
     ? content.replace(/\n/g, '<br>')
-    : marked.parse(content);
+    : renderMarkdown(content);
 
   const div = document.createElement('div');
   div.className = `msg ${isUser ? 'user' : 'ai'}`;
