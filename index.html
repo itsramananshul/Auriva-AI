@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auriva AI — Sign In</title>
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/auth.css"/>
+  <link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-mandala"></div>
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="symbol">॥ Auriva AI</div>
+      <div class="tagline">Ancient Wisdom · Modern Life</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign In</button>
+      <button class="auth-tab" data-tab="signup">Create Account</button>
+    </div>
+
+    <!-- Login -->
+    <div id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="your@email.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••"/>
+      </div>
+      <button class="auth-btn" id="btn-login">Enter the Wisdom</button>
+    </div>
+
+    <!-- Signup -->
+    <div id="signup-form" class="hidden">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="signup-name" placeholder="Your name"/>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="your@email.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="signup-pass" placeholder="min 6 characters"/>
+      </div>
+      <button class="auth-btn" id="btn-signup">Begin the Journey</button>
+    </div>
+
+    <div id="auth-err" class="auth-err"></div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+<script type="module" src="js/auth.js"></script>
+<script type="module">
+  import { initAuth } from './js/auth.js';
+  document.addEventListener('DOMContentLoaded', initAuth);
+</script>
+</body>
+</html>

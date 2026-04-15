@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auriva AI — Choose Your Path</title>
+  <link rel="stylesheet" href="css/base.css"/>
+  <link rel="stylesheet" href="css/auth.css"/>
+  <link rel="stylesheet" href="css/components.css"/>
+  <link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<div id="onboard-screen">
+  <div class="onboard-box">
+    <div class="onboard-step">Personalization · Step 1 of 1</div>
+    <div class="onboard-title">Who guides your path?</div>
+    <div class="onboard-sub">
+      Choose your primary deity. Auriva AI will tailor wisdom and verses to your devotion.
+      You can change this anytime from your profile.
+    </div>
+
+    <div class="deity-grid">
+      <div class="deity-opt" data-deity="Lord Krishna" data-source="Bhagavad Gita">
+        <div class="deity-name">Lord Krishna</div>
+        <div class="deity-desc">Bhagavad Gita · Vaishnavism</div>
+      </div>
+      <div class="deity-opt" data-deity="Lord Shiva" data-source="Shiva Purana">
+        <div class="deity-name">Lord Shiva</div>
+        <div class="deity-desc">Shaivism · Destroyer & Transformer</div>
+      </div>
+      <div class="deity-opt" data-deity="Goddess Durga" data-source="Devi Mahatmya">
+        <div class="deity-name">Goddess Durga</div>
+        <div class="deity-desc">Shaktism · Divine Feminine</div>
+      </div>
+      <div class="deity-opt" data-deity="Lord Rama" data-source="Ramayana">
+        <div class="deity-name">Lord Rama</div>
+        <div class="deity-desc">Ramayana · Dharmic King</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Preferred Language</label>
+      <select id="pref-lang">
+        <option value="English">English</option>
+        <option value="Hindi">Hindi</option>
+        <option value="Sanskrit + English">Sanskrit + English</option>
+      </select>
+    </div>
+
+    <button class="auth-btn" id="btn-onboard">Enter Auriva AI</button>
+    <div id="onboard-err" class="auth-err"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initOnboarding } from './js/app.js';
+  document.addEventListener('DOMContentLoaded', initOnboarding);
+</script>
+</body>
+</html>

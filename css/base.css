@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --gold:#C9A84C;
+  --gold-light:#E8C97A;
+  --gold-dim:#8B6914;
+  --gold-glow:rgba(201,168,76,0.15);
+  --black:#080808;
+  --surface:#0E0E0E;
+  --surface2:#161616;
+  --surface3:#1E1C18;
+  --text:#F0E6CC;
+  --text-muted:#8A7B5C;
+  --border:rgba(201,168,76,0.15);
+  --border-bright:rgba(201,168,76,0.4);
+  --danger:#E24B4A;
+}
+
+html, body {
+  height: 100%;
+  background: var(--black);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+
+.hidden { display: none !important; }
+
+.divider {
+  height: 0.5px;
+  background: var(--border);
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gold-line-top::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 5%; right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
