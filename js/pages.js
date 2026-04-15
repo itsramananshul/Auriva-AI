@@ -1,10 +1,18 @@
-import { fetchRandomVerse, fetchVerseByRef } from './api.js';
+import { fetchRandomVerse } from './api.js';
 import { CHAPTER_NAMES, VERSE_COUNTS } from './config.js';
 
 let dailyVerse = null;
+let _verseLoading = false;
 
+// ─── Load verse (called on app init) ───
 export async function loadDailyVerseCard() {
-  dailyVerse = await fetchRandomVerse();
+  _verseLoading = true;
+  try {
+    dailyVerse = await fetchRandomVerse();
+  } finally {
+    _verseLoading = false;
+  }
+
   // Mini card on seek page
   const ref   = document.getElementById('mini-ref');
   const tag   = document.getElementById('mini-tag');
@@ -14,6 +22,9 @@ export async function loadDailyVerseCard() {
   if (tag)  tag.textContent  = "Today's Verse";
   if (sans) sans.textContent = dailyVerse.sanskrit;
   if (trans) trans.textContent = dailyVerse.translation;
+
+  // If user is already on daily page, render it now
+  renderDailyPage();
 }
 
 export function showPage(name) {
@@ -37,15 +48,23 @@ export function showPage(name) {
   const ttl = document.getElementById('page-title');
   if (ttl) ttl.innerHTML = titles[name] || name;
 
-  if (name === 'daily')      renderDailyPage();
+  if (name === 'daily') {
+    if (dailyVerse) {
+      renderDailyPage();
+    } else if (!_verseLoading) {
+      // Verse never loaded — trigger a fresh fetch
+      refreshDailyVerse();
+    }
+    // If _verseLoading is true, loadDailyVerseCard() will call renderDailyPage() when done
+  }
   if (name === 'scriptures') renderScriptures();
 }
 
 function renderDailyPage() {
   const v = dailyVerse;
   if (!v) return;
-  const ref  = document.getElementById('dv-ref');
-  const sans = document.getElementById('dv-sanskrit');
+  const ref   = document.getElementById('dv-ref');
+  const sans  = document.getElementById('dv-sanskrit');
   const trans = document.getElementById('dv-trans');
   if (ref)   ref.textContent  = `Bhagavad Gita · Chapter ${v.chapter} · Verse ${v.verse}`;
   if (sans)  sans.textContent = v.sanskrit;
@@ -60,9 +79,9 @@ export async function refreshDailyVerse() {
     dailyVerse = await fetchRandomVerse();
     renderDailyPage();
     // Also refresh mini card
+    const ref   = document.getElementById('mini-ref');
     const sans  = document.getElementById('mini-sanskrit');
     const trans = document.getElementById('mini-trans');
-    const ref   = document.getElementById('mini-ref');
     if (ref)   ref.textContent  = `Bhagavad Gita · Ch. ${dailyVerse.chapter} · V. ${dailyVerse.verse}`;
     if (sans)  sans.textContent = dailyVerse.sanskrit;
     if (trans) trans.textContent = dailyVerse.translation;
@@ -85,7 +104,6 @@ function renderScriptures() {
   grid.querySelectorAll('.sc-card').forEach(card => {
     card.addEventListener('click', () => {
       const ch = card.dataset.chapter;
-      // Navigate to seek and pre-fill
       showPage('seek');
       const input = document.getElementById('user-input');
       if (input) {
