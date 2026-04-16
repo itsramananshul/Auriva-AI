@@ -1,6 +1,6 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
-import { getProfile, getDailyVerse, sb } from './app.js';
+import { getProfile, getDailyVerse, showConfirm, sb } from './app.js';
 // Simple markdown renderer — no external dependency
 function renderMarkdown(text) {
   return text
@@ -209,7 +209,10 @@ function makeRecentEl(chatId, title) {
 
 async function deleteChat(chatId, el) {
   if (!sb) return;
-  // Delete messages first, then the chat
+
+  const confirmed = await showConfirm('This cannot be undone.', 'Delete this chat?');
+  if (!confirmed) return;
+
   await sb.from('messages').delete().eq('chat_id', chatId);
   await sb.from('chats').delete().eq('id', chatId);
 

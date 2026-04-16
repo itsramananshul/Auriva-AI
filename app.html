@@ -163,6 +163,18 @@
 <!-- ── MOBILE DRAWER OVERLAY ── -->
 <div class="mob-overlay" id="mob-overlay"></div>
 
+<!-- ── CONFIRM DIALOG ── -->
+<div class="modal-overlay" id="confirm-overlay">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-title" style="font-size:20px;" id="confirm-title">Delete chat?</div>
+    <p id="confirm-msg" style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:1.5rem;">This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="modal-cancel-btn" id="confirm-cancel">Cancel</button>
+      <button class="auth-btn" id="confirm-ok" style="background:var(--danger);flex:1.5;">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── PROFILE EDIT MODAL ── -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-box">

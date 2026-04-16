@@ -221,6 +221,37 @@ function initProfileEdit(user) {
   });
 }
 
+// ─── Confirm dialog ───
+export function showConfirm(message = 'This cannot be undone.', title = 'Are you sure?') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('confirm-overlay');
+    const titleEl = document.getElementById('confirm-title');
+    const msgEl   = document.getElementById('confirm-msg');
+    const okBtn   = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    titleEl.textContent = title;
+    msgEl.textContent   = message;
+    overlay.classList.add('open');
+
+    const cleanup = (result) => {
+      overlay.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      resolve(result);
+    };
+
+    const onOk      = () => cleanup(true);
+    const onCancel  = () => cleanup(false);
+    const onOverlay = (e) => { if (e.target === overlay) cleanup(false); };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+  });
+}
+
 function setEl(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
