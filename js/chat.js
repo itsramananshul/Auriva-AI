@@ -1,7 +1,6 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
-import { getProfile, sb } from './app.js';
-import { getDailyVerse } from './pages.js';
+import { getProfile, getDailyVerse, sb } from './app.js';
 // Simple markdown renderer — no external dependency
 function renderMarkdown(text) {
   return text

@@ -1,11 +1,9 @@
 import { fetchRandomVerse } from './api.js';
 import { CHAPTER_NAMES, VERSE_COUNTS, BIBLE_BOOKS } from './config.js';
-import { getProfile } from './app.js';
+import { getProfile, setDailyVerse } from './app.js';
 
 let dailyVerse = null;
 let _verseLoading = false;
-
-export const getDailyVerse = () => dailyVerse;
 
 function isBibleUser() {
   return getProfile()?.source === 'Bible';
@@ -22,6 +20,7 @@ export async function loadDailyVerseCard() {
   _verseLoading = true;
   try {
     dailyVerse = await fetchRandomVerse(source);
+    setDailyVerse(dailyVerse);
   } finally {
     _verseLoading = false;
   }
@@ -90,6 +89,7 @@ export async function refreshDailyVerse() {
   const source = getProfile()?.source || 'Bhagavad Gita';
   try {
     dailyVerse = await fetchRandomVerse(source);
+    setDailyVerse(dailyVerse);
     renderDailyPage();
     const ref   = document.getElementById('mini-ref');
     const sans  = document.getElementById('mini-sanskrit');

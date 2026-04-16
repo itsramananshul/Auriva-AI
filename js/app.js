@@ -19,7 +19,10 @@ export const sb = _sb;
 // ─── Profile state ───
 let _profile = null;
 let _appReady = false;
+let _dailyVerse = null;
 export const getProfile = () => _profile;
+export const getDailyVerse = () => _dailyVerse;
+export const setDailyVerse = (v) => { _dailyVerse = v; };
 
 // ─── Boot ───
 async function boot() {
