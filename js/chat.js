@@ -259,23 +259,33 @@ export async function sendMessage() {
   try {
     const profile    = getProfile();
     const dailyVerse = getDailyVerse();
-    const response   = await generateResponse(text, _history, profile, dailyVerse);
+
+    // Timeout after 55s — show friendly message instead of hanging forever
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 55000)
+    );
+    const response = await Promise.race([
+      generateResponse(text, _history, profile, dailyVerse),
+      timeoutPromise
+    ]);
+
     removeTyping();
     appendMsg('ai', response);
 
-    // Update in-memory history
     _history.push({ role: 'user',  content: text });
     _history.push({ role: 'model', content: response });
 
-    // Title the chat from the first user message
     if (isFirstMsg) await titleChat(text);
   } catch (err) {
     removeTyping();
-    appendMsg('ai', `Error: ${err.message}`);
+    const msg = err.message === 'timeout'
+      ? 'That took too long to respond. Try sending a shorter message, or try again.'
+      : `Something went wrong: ${err.message}`;
+    appendMsg('ai', msg);
     console.error(err);
+  } finally {
+    sendBtn.disabled = false;
   }
-
-  sendBtn.disabled = false;
 }
 
 // ─── Render message ───
