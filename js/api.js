@@ -26,7 +26,7 @@ export async function fetchRandomVerse(source = 'Bhagavad Gita') {
 
 // ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───
 
-export async function generateResponse(userQuery, history, profile, dailyVerse = null) {
+export async function generateResponse(userQuery, history, profile, dailyVerse = null, onChunk = null) {
   const deity  = profile?.deity  || 'Lord Krishna';
   const source = profile?.source || 'Bhagavad Gita';
   const isBible = source === 'Bible';

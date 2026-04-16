@@ -1,6 +1,5 @@
 {
   "functions": {
-    "api/chat.js": { "maxDuration": 60 },
     "api/daily-verse.js": { "maxDuration": 30 }
   }
 }
