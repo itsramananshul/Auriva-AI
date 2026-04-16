@@ -336,28 +336,61 @@
 .modal-overlay {
   display: none;
   position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.75);
   align-items: center; justify-content: center;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
 .modal-overlay.open { display: flex; }
+
 .modal-box {
   width: 420px; max-width: 92vw;
   background: var(--surface);
   border: 0.5px solid var(--border-bright);
-  border-radius: 14px; padding: 2rem;
+  border-radius: 16px; padding: 2.25rem;
   animation: fadeUp 0.25s ease;
+  position: relative;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
 }
+.modal-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
 .modal-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 22px; font-weight: 300;
-  color: var(--gold); margin-bottom: 1.5rem;
+  font-size: 26px; font-weight: 300; font-style: italic;
+  color: var(--gold); margin-bottom: 1.75rem; letter-spacing: 1px;
 }
+
+/* Reuse .field styles from auth.css — inputs already styled */
+.modal-box .field { margin-bottom: 1.1rem; }
+.modal-box .field label {
+  display: block;
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+}
+.modal-box .field input,
+.modal-box .field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 13.5px; color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  outline: none; transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.modal-box .field input:focus,
+.modal-box .field select:focus { border-color: var(--gold); }
+.modal-box .field select option { background: var(--surface2); color: var(--text); }
+
 .modal-actions {
-  display: flex; gap: 10px; margin-top: 1.5rem;
+  display: flex; gap: 10px; margin-top: 1.75rem;
 }
 .modal-cancel-btn {
-  flex: 1; padding: 10px; border-radius: 8px;
+  flex: 1; padding: 11px; border-radius: 8px;
   border: 0.5px solid var(--border);
   background: transparent; color: var(--text-muted);
   font-family: 'Outfit', sans-serif; font-size: 13px;
