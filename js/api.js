@@ -26,7 +26,7 @@ export async function fetchRandomVerse(source = 'Bhagavad Gita') {
 
 // ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───
 
-export async function generateResponse(userQuery, history, profile) {
+export async function generateResponse(userQuery, history, profile, dailyVerse = null) {
   const deity  = profile?.deity  || 'Lord Krishna';
   const source = profile?.source || 'Bhagavad Gita';
   const isBible = source === 'Bible';
@@ -34,6 +34,14 @@ export async function generateResponse(userQuery, history, profile) {
   const scriptureGuide = isBible
     ? `You draw wisdom from the Holy Bible — both Old and New Testament. When someone comes to you, find the Bible verse that most precisely speaks to their situation. Quote it clearly (Book Chapter:Verse), then explain how it applies to their life today. At the end, briefly add 1-2 lines connecting this to a universal truth — you can mention that ancient Hindu wisdom says the same thing in its own way, without naming specific Hindu deities or assuming the person knows them. Keep this connection natural and brief.`
     : `You draw wisdom from the Bhagavad Gita's 700 verses across 18 chapters. When someone comes to you, find the shloka that most precisely speaks to their situation — not always the famous ones. Write it in Devanagari Sanskrit first, then give its meaning in clear modern language.`;
+
+  // Build today's verse context
+  let verseContext = '';
+  if (dailyVerse) {
+    const ref = dailyVerse.ref ||
+      `Bhagavad Gita Chapter ${dailyVerse.chapter}, Verse ${dailyVerse.verse}`;
+    verseContext = `\n\nToday's verse shown to this person is:\n**${ref}** — "${dailyVerse.translation}"${dailyVerse.sanskrit ? `\nSanskrit: ${dailyVerse.sanskrit}` : ''}\nIf they ask about "today's verse" or "this verse", refer to this one.`;
+  }
 
   const systemPrompt = `You are a wise, grounded spiritual guide. You speak like a calm, trusted friend — not a dramatic preacher. No "My dear one", no "beloved seeker", no overly poetic openers. Just real, warm, human conversation.
 
@@ -49,7 +57,7 @@ When someone comes to you:
 
 4. Remember the conversation thread. Build on what was shared before. Don't repeat the same verse twice.
 
-5. IMPORTANT — if they ask for a one-line answer or short reply, give exactly that. Respect what they ask for.`;
+5. IMPORTANT — if they ask for a one-line answer or short reply, give exactly that. Respect what they ask for.${verseContext}`;
 
   // Build Gemini contents: full conversation history + current question
   const contents = [

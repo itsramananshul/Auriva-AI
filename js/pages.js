@@ -5,6 +5,8 @@ import { getProfile } from './app.js';
 let dailyVerse = null;
 let _verseLoading = false;
 
+export const getDailyVerse = () => dailyVerse;
+
 function isBibleUser() {
   return getProfile()?.source === 'Bible';
 }

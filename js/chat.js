@@ -1,6 +1,7 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
 import { getProfile, sb } from './app.js';
+import { getDailyVerse } from './pages.js';
 // Simple markdown renderer — no external dependency
 function renderMarkdown(text) {
   return text
@@ -257,9 +258,9 @@ export async function sendMessage() {
   showTyping();
 
   try {
-    const profile  = getProfile();
-    // Pass full history (without current message — it's added inside generateResponse)
-    const response = await generateResponse(text, _history, profile);
+    const profile    = getProfile();
+    const dailyVerse = getDailyVerse();
+    const response   = await generateResponse(text, _history, profile, dailyVerse);
     removeTyping();
     appendMsg('ai', response);
 
