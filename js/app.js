@@ -87,7 +87,10 @@ async function initApp(user, profile) {
   await initChat();
   loadDailyVerseCard();
 
-  // Signout
+  // Settings modal
+  initSettings();
+
+  // Legacy signout (no longer in sidebar but keep for safety)
   document.getElementById('btn-signout')?.addEventListener('click', handleSignout);
 
   // Profile edit
@@ -158,6 +161,34 @@ export function initOnboarding() {
   });
 }
 
+// ─── Settings Modal ───
+function initSettings() {
+  const overlay   = document.getElementById('settings-overlay');
+  const openBtn   = document.getElementById('btn-settings');
+  const closeBtn  = document.getElementById('btn-settings-close');
+  const editBtn   = document.getElementById('btn-settings-edit');
+  const signoutBtn = document.getElementById('btn-settings-signout');
+
+  const open = () => {
+    setEl('settings-deity', _profile?.deity || '—');
+    setEl('settings-src',   `${_profile?.source || 'Bhagavad Gita'} · ${_profile?.language || 'English'}`);
+    overlay.classList.add('open');
+  };
+
+  openBtn?.addEventListener('click', open);
+  closeBtn?.addEventListener('click', () => overlay.classList.remove('open'));
+  overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+  // Edit profile: close settings, open profile edit modal
+  editBtn?.addEventListener('click', () => {
+    overlay.classList.remove('open');
+    // Trigger the user-pill click which opens the profile edit modal
+    document.getElementById('btn-edit-profile')?.click();
+  });
+
+  signoutBtn?.addEventListener('click', handleSignout);
+}
+
 // ─── Profile Edit Modal ───
 function initProfileEdit(user) {
   const overlay   = document.getElementById('modal-overlay');
@@ -209,8 +240,7 @@ function initProfileEdit(user) {
       // Update sidebar display
       setEl('sidebar-name', name);
       setEl('sidebar-avatar', name[0]?.toUpperCase() || 'S');
-      setEl('sidebar-deity', deity);
-      setEl('sidebar-source', `${source} · ${lang}`);
+      setEl('sidebar-religion', deity);
 
       overlay.classList.remove('open');
     } catch (err) {

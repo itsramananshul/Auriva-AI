@@ -72,17 +72,13 @@
       <div class="recents-list" id="recents-list"></div>
     </div>
 
-    <div class="deity-card">
-      <div class="deity-lbl">Your Devotion</div>
-      <div class="deity-nm" id="sidebar-deity">—</div>
-      <div class="deity-src" id="sidebar-source">—</div>
-    </div>
-
-    <button class="signout-btn" id="btn-signout">
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
-        <path d="M6 2H2v12h4M11 5l3 3-3 3M14 8H6"/>
+    <!-- Settings button — fixed at very bottom -->
+    <button class="settings-btn" id="btn-settings">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+        <circle cx="8" cy="8" r="2.5"/>
+        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/>
       </svg>
-      Sign out
+      Settings
     </button>
   </aside>
 
@@ -192,6 +188,38 @@
       <button class="modal-cancel-btn" id="confirm-cancel">Cancel</button>
       <button class="auth-btn" id="confirm-ok" style="background:var(--danger);flex:1.5;">Delete</button>
     </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS MODAL ── -->
+<div class="modal-overlay" id="settings-overlay">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-title">Settings</div>
+
+    <!-- Your Path card -->
+    <div class="settings-path-card">
+      <div class="settings-path-lbl">Your Path</div>
+      <div class="settings-path-deity" id="settings-deity">—</div>
+      <div class="settings-path-src" id="settings-src">—</div>
+    </div>
+
+    <!-- Actions -->
+    <div class="settings-actions">
+      <button class="settings-action-btn" id="btn-settings-edit">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M11 2l3 3-9 9H2v-3L11 2z"/>
+        </svg>
+        Edit Profile
+      </button>
+      <button class="settings-action-btn danger" id="btn-settings-signout">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M6 2H2v12h4M11 5l3 3-3 3M14 8H6"/>
+        </svg>
+        Sign Out
+      </button>
+    </div>
+
+    <button class="modal-cancel-btn" id="btn-settings-close" style="width:100%;margin-top:1.25rem;">Close</button>
   </div>
 </div>
 
