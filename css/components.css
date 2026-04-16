@@ -499,15 +499,19 @@
 .voice-tick svg { width: 13px; height: 13px; stroke: #000; }
 
 /* ── MESSAGE EDIT BUTTON ── */
-.msg.user .msg-bubble { position: relative; }
+.msg.user .msg-bubble {
+  position: relative;
+  /* Extra bottom padding so edit btn doesn't overlap last line of text */
+  padding-bottom: 22px;
+}
 
 .msg-edit-btn {
   position: absolute;
-  bottom: -8px; right: -8px;
-  width: 22px; height: 22px;
+  bottom: 5px; right: 10px;   /* inside the bubble — no negative offsets */
+  width: 20px; height: 20px;
   border-radius: 50%;
-  background: var(--surface);
-  border: 0.5px solid var(--border-bright);
+  background: rgba(201,168,76,0.08);
+  border: 0.5px solid rgba(201,168,76,0.2);
   color: var(--text-muted);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -516,13 +520,13 @@
   z-index: 2;
 }
 .msg-edit-btn svg { width: 9px; height: 9px; }
-.msg-edit-btn:hover { background: var(--surface2); color: var(--gold); }
+.msg-edit-btn:hover { background: rgba(201,168,76,0.18); color: var(--gold); }
 
 /* Show on hover (desktop) */
 .msg.user:hover .msg-edit-btn { opacity: 1; }
 
-/* Always slightly visible on touch devices */
+/* Always visible on touch devices */
 @media (hover: none) {
-  .msg-edit-btn { opacity: 0.5; }
+  .msg-edit-btn { opacity: 0.55; }
 }
 
