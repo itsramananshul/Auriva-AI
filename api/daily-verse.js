@@ -8,22 +8,28 @@ const BIBLE_IDS = {
 };
 
 export default async function handler(req, res) {
-  const seed   = req.query.seed   || Math.random();
-  const source = req.query.source || 'Bhagavad Gita';
+  const seed    = req.query.seed   || Math.random();
+  const source  = req.query.source || 'Bhagavad Gita';
   const isBible = source === 'Bible';
 
+  // Tier 1: Real API
   try {
-    if (isBible) {
-      const verse = await getBibleVerse(seed);
-      return res.status(200).json(verse);
-    } else {
-      const verse = await getGitaVerse();
-      return res.status(200).json(verse);
-    }
+    const verse = isBible ? await getBibleVerse(seed) : await getGitaVerse();
+    return res.status(200).json(verse);
   } catch (err) {
-    console.error('daily-verse error:', err.message);
-    return res.status(200).json(isBible ? bibleFallback() : gitaFallback());
+    console.error('[daily-verse] Real API failed:', err.message);
   }
+
+  // Tier 2: Gemini AI generation
+  try {
+    const verse = isBible ? await getGeminiVerse('Bible', seed) : await getGeminiVerse('Bhagavad Gita', seed);
+    return res.status(200).json(verse);
+  } catch (err) {
+    console.error('[daily-verse] Gemini fallback failed:', err.message);
+  }
+
+  // Tier 3: Hardcoded fallback — always works
+  return res.status(200).json(isBible ? bibleFallback() : gitaFallback());
 }
 
 // ─── Bhagavad Gita — vedicscriptures.github.io ───
@@ -112,7 +118,33 @@ Respond with ONLY valid JSON, no markdown:
   };
 }
 
-// ─── Fallbacks ───
+// ─── Tier 2: Gemini AI fallback (when real APIs fail) ───
+async function getGeminiVerse(source, seed) {
+  const isBible = source === 'Bible';
+  const prompt = isBible
+    ? `Return a random Bible verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
+{"ref":"<Book Chapter:Verse>","chapter":<n>,"verse":<n>,"sanskrit":"","translation":"<exact verse text>"}`
+    : `Return a random Bhagavad Gita verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
+{"chapter":<n>,"verse":<n>,"sanskrit":"<Devanagari>","translation":"<English meaning>"}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 300, temperature: 1.2 }
+    })
+  });
+  const data = await res.json();
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  const verse = JSON.parse(text);
+  if (!verse.translation) throw new Error('Invalid Gemini response');
+  return verse;
+}
+
+// ─── Tier 3: Hardcoded fallbacks (always works, no network needed) ───
 function gitaFallback() {
   const options = [
     { chapter: 2, verse: 47, sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥', translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.' },
