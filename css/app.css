@@ -246,29 +246,48 @@ html, body { overflow: hidden; }
     padding: 4px; margin-right: 10px; flex-shrink: 0;
   }
 
-  /* Main fills screen */
+  /* Main fills screen — strict overflow clipping at every level */
   .main {
     height: 100dvh;
-    overflow-x: hidden;
+    overflow: hidden;
     width: 100%;
+    max-width: 100vw;
     box-sizing: border-box;
   }
+  .page { overflow: hidden; max-width: 100%; }
+  .content { overflow-x: hidden; }
 
   /* Compact topbar */
   .topbar { padding: 0.75rem 1rem; }
   .page-ttl { font-size: 17px; }
 
   /* Content & input */
-  .content { padding: 0.85rem; gap: 0.85rem; overflow-x: hidden; width: 100%; box-sizing: border-box; }
-  .input-area { padding: 0.6rem 0.85rem; width: 100%; box-sizing: border-box; }
-  /* Tighter padding + smaller gap so mic/send/voice buttons all fit on small screens */
-  .input-wrap { box-sizing: border-box; width: 100%; gap: 6px; padding: 8px 10px; }
-  #user-input { min-width: 0; font-size: 13px; }
-  /* Scale buttons down slightly on mobile */
-  .mic-btn { width: 30px; height: 30px; flex-shrink: 0; }
-  .send-btn { width: 30px; height: 30px; flex-shrink: 0; }
-  .voice-tick, .voice-cross { width: 30px; height: 30px; }
-  .voice-actions { gap: 4px; }
+  .content { padding: 0.75rem; gap: 0.75rem; overflow-x: hidden; width: 100%; box-sizing: border-box; }
+
+  /* Input area: single source of horizontal padding — input-wrap gets ZERO horizontal padding */
+  .input-area {
+    padding: 6px 10px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); /* iOS home bar */
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden; /* hard clip — nothing escapes */
+  }
+  .input-wrap {
+    padding: 7px 0;           /* vertical only — no horizontal padding */
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+  /* Textarea gets its own left padding so text doesn't hug the border */
+  #user-input { min-width: 0; font-size: 13px; padding-left: 12px; }
+
+  /* Buttons: fixed size, never shrink */
+  .mic-btn  { width: 32px; height: 32px; min-width: 32px; flex-shrink: 0; margin-right: 4px; }
+  .send-btn { width: 32px; height: 32px; min-width: 32px; flex-shrink: 0; margin-right: 4px; }
+  .voice-tick, .voice-cross { width: 32px; height: 32px; min-width: 32px; flex-shrink: 0; }
+  .voice-actions { gap: 4px; margin-right: 4px; }
 
   /* Verse card — compact */
   .verse-card { padding: 1rem; }
