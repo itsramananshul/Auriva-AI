@@ -74,7 +74,23 @@ When someone comes to you:
     body: JSON.stringify({ contents, systemPrompt })
   });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || `Error: ${res.status}`);
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || `Error: ${res.status}`);
+  }
+
+  // Stream the response — call onChunk(partialText) as tokens arrive
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText  = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    fullText += chunk;
+    if (onChunk) onChunk(fullText);
+  }
+
+  return fullText;
 }

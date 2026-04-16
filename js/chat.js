@@ -254,38 +254,54 @@ export async function sendMessage() {
   }
 
   appendMsg('user', text);
-  showTyping();
+
+  // Create AI bubble immediately — stream tokens into it
+  const bubble = createStreamBubble();
 
   try {
     const profile    = getProfile();
     const dailyVerse = getDailyVerse();
 
-    // Timeout after 55s — show friendly message instead of hanging forever
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 55000)
+    const response = await generateResponse(
+      text, _history, profile, dailyVerse,
+      (partial) => updateStreamBubble(bubble, partial)
     );
-    const response = await Promise.race([
-      generateResponse(text, _history, profile, dailyVerse),
-      timeoutPromise
-    ]);
 
-    removeTyping();
-    appendMsg('ai', response);
+    finalizeStreamBubble(bubble, response);
 
     _history.push({ role: 'user',  content: text });
     _history.push({ role: 'model', content: response });
 
+    saveMessage('ai', response);
     if (isFirstMsg) await titleChat(text);
   } catch (err) {
-    removeTyping();
-    const msg = err.message === 'timeout'
-      ? 'That took too long to respond. Try sending a shorter message, or try again.'
-      : `Something went wrong: ${err.message}`;
-    appendMsg('ai', msg);
+    const msg = `Something went wrong: ${err.message}`;
+    updateStreamBubble(bubble, msg);
+    finalizeStreamBubble(bubble, msg);
     console.error(err);
   } finally {
     sendBtn.disabled = false;
   }
+}
+
+// ─── Streaming bubble helpers ───
+function createStreamBubble() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `<div class="msg-av">॥</div><div class="msg-bubble"><span class="stream-cursor">▍</span></div>`;
+  container.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div.querySelector('.msg-bubble');
+}
+
+function updateStreamBubble(bubble, partialText) {
+  bubble.innerHTML = renderMarkdown(partialText) + '<span class="stream-cursor">▍</span>';
+  bubble.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function finalizeStreamBubble(bubble, fullText) {
+  bubble.innerHTML = renderMarkdown(fullText);
 }
 
 // ─── Render message ───

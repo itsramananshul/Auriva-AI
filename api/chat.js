@@ -1,12 +1,12 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+// Edge runtime — no timeout, streams tokens as Gemini generates them
+export const config = { runtime: 'edge' };
 
-  const { contents, systemPrompt } = req.body;
-  if (!contents?.length) return res.status(400).json({ error: 'Missing contents' });
+export default async function handler(req) {
+  const { contents, systemPrompt } = await req.json();
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`;
 
-  const response = await fetch(url, {
+  const geminiRes = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -16,11 +16,46 @@ export default async function handler(req, res) {
     })
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    return res.status(response.status).json({
-      error: data?.error?.message || `Gemini error ${response.status}`
-    });
+  if (!geminiRes.ok) {
+    const err = await geminiRes.json().catch(() => ({}));
+    return new Response(
+      JSON.stringify({ error: err?.error?.message || 'Gemini error' }),
+      { status: geminiRes.status, headers: { 'Content-Type': 'application/json' } }
+    );
   }
-  return res.status(200).json(data);
+
+  // Parse Gemini SSE and forward only the text to the client
+  const encoder = new TextEncoder();
+  const stream  = new ReadableStream({
+    async start(controller) {
+      const reader  = geminiRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (!data || data === '[DONE]') continue;
+            try {
+              const json = JSON.parse(data);
+              const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+              if (text) controller.enqueue(encoder.encode(text));
+            } catch {}
+          }
+        }
+      } finally {
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' }
+  });
 }
