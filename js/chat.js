@@ -23,6 +23,7 @@ let _history = []; // { role: 'user'|'model', content: string }
 // ─── Voice state ───
 let _recognition = null;
 let _voiceState  = 'idle'; // 'idle' | 'recording' | 'confirm'
+let _voiceBase   = '';     // text accumulated from previous recognition sessions (restarts)
 
 // ─── Init ───
 export async function initChat() {
@@ -59,16 +60,25 @@ function initVoiceInput() {
   }
 
   micBtn?.addEventListener('click', () => {
-    if (_voiceState === 'recording') stopRecording();
-    else startRecording(); // idle or confirm → start fresh
+    if (_voiceState === 'recording') {
+      stopRecording();
+    } else {
+      // Fresh start — clear any previous transcript base
+      _voiceBase = '';
+      const input = document.getElementById('user-input');
+      if (input) { input.value = ''; input.style.height = 'auto'; }
+      startRecording();
+    }
   });
 
   document.getElementById('voice-tick')?.addEventListener('click', () => {
+    _voiceBase = '';
     setVoiceState('idle');
     sendMessage();
   });
 
   document.getElementById('voice-cross')?.addEventListener('click', () => {
+    _voiceBase = '';
     const input = document.getElementById('user-input');
     if (input) { input.value = ''; input.style.height = 'auto'; }
     setVoiceState('idle');
@@ -80,39 +90,41 @@ function startRecording() {
   const input     = document.getElementById('user-input');
   if (!SpeechRec || !input) return;
 
-  input.value = '';
-
   try {
-    _recognition = new SpeechRec();
-    _recognition.continuous      = false; // stops after natural pause → triggers onend
-    _recognition.interimResults  = true;
-    _recognition.lang            = 'en-US';
+    const rec = new SpeechRec();
+    rec.continuous     = true;   // don't stop on natural pauses
+    rec.interimResults = true;
+    rec.lang           = 'en-US';
 
-    _recognition.onresult = (e) => {
-      let final = '', interim = '';
+    rec.onresult = (e) => {
+      // e.results accumulates for this session; prepend _voiceBase from prior sessions
+      let sessionText = '';
       for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final  += e.results[i][0].transcript;
-        else                       interim += e.results[i][0].transcript;
+        sessionText += e.results[i][0].transcript;
       }
-      input.value = final + interim;
+      input.value = _voiceBase + sessionText;
       input.style.height = 'auto';
       input.style.height = Math.min(input.scrollHeight, 100) + 'px';
     };
 
-    _recognition.onend = () => {
+    rec.onend = () => {
       _recognition = null;
-      // If still in recording state (not manually overridden), move to confirm or idle
       if (_voiceState === 'recording') {
-        setVoiceState(input.value.trim() ? 'confirm' : 'idle');
+        // Browser killed the session — save what we have and restart seamlessly
+        _voiceBase = input.value;
+        startRecording();
       }
     };
 
-    _recognition.onerror = () => {
+    rec.onerror = (e) => {
+      // 'aborted' = manual stop (we handle via stopRecording), 'no-speech' = normal pause — ignore both
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
       _recognition = null;
-      setVoiceState('idle');
+      setVoiceState(input.value.trim() ? 'confirm' : 'idle');
     };
 
-    _recognition.start();
+    rec.start();
+    _recognition = rec;
     setVoiceState('recording');
   } catch {
     setVoiceState('idle');
@@ -121,8 +133,14 @@ function startRecording() {
 
 function stopRecording() {
   if (_recognition) {
-    _recognition.stop(); // will trigger onend → moves to confirm
+    const rec = _recognition;
+    _recognition = null;
+    rec.onend = null; // prevent auto-restart loop
+    rec.stop();
   }
+  _voiceBase = '';
+  const input = document.getElementById('user-input');
+  setVoiceState(input?.value.trim() ? 'confirm' : 'idle');
 }
 
 function setVoiceState(state) {
