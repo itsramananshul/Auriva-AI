@@ -428,3 +428,101 @@
 .recents-item:hover .recents-delete { opacity: 1; }
 .recents-delete:hover { color: var(--danger); background: rgba(226,75,74,0.1); }
 
+/* ── MIC / VOICE INPUT ── */
+.mic-btn {
+  flex-shrink: 0;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.mic-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.2);
+}
+.mic-btn svg { width: 14px; height: 14px; }
+
+/* Pulsing animation while recording */
+.mic-btn.recording {
+  background: rgba(212,175,55,0.12);
+  border-color: var(--gold);
+  color: var(--gold);
+  animation: mic-pulse 1.3s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(212,175,55,0.45); }
+  50%       { box-shadow: 0 0 0 7px rgba(212,175,55,0);    }
+}
+
+/* Border glow on input wrap while recording */
+.input-wrap.recording { border-color: rgba(212,175,55,0.35); }
+
+/* Voice tick / cross container */
+.voice-actions {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.voice-cross,
+.voice-tick {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.12s;
+}
+.voice-cross {
+  background: transparent;
+  border: 0.5px solid rgba(255,255,255,0.14);
+  color: var(--text-muted);
+}
+.voice-cross:hover {
+  background: rgba(226,75,74,0.12);
+  border-color: rgba(226,75,74,0.35);
+  color: #e24b4a;
+}
+.voice-cross svg { width: 11px; height: 11px; stroke: currentColor; }
+
+.voice-tick {
+  background: var(--gold);
+  border: none;
+}
+.voice-tick:hover { opacity: 0.88; transform: scale(1.05); }
+.voice-tick svg { width: 13px; height: 13px; stroke: #000; }
+
+/* ── MESSAGE EDIT BUTTON ── */
+.msg.user .msg-bubble { position: relative; }
+
+.msg-edit-btn {
+  position: absolute;
+  bottom: -8px; right: -8px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 0.5px solid var(--border-bright);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s, background 0.18s, color 0.18s;
+  z-index: 2;
+}
+.msg-edit-btn svg { width: 9px; height: 9px; }
+.msg-edit-btn:hover { background: var(--surface2); color: var(--gold); }
+
+/* Show on hover (desktop) */
+.msg.user:hover .msg-edit-btn { opacity: 1; }
+
+/* Always slightly visible on touch devices */
+@media (hover: none) {
+  .msg-edit-btn { opacity: 0.5; }
+}
+

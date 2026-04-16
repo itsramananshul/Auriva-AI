@@ -1,30 +1,28 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
 import { getProfile, getDailyVerse, showConfirm, sb } from './app.js';
-// Simple markdown renderer — no external dependency
+
+// ─── Markdown renderer ───
 function renderMarkdown(text) {
   return text
-    // Bold
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic (only if not a bullet line)
     .replace(/(?<!\n)\*(?!\s)(.+?)\*/g, '<em>$1</em>')
-    // Headings
     .replace(/^### (.+)$/gm, '<strong>$1</strong>')
     .replace(/^## (.+)$/gm, '<strong>$1</strong>')
     .replace(/^# (.+)$/gm, '<strong>$1</strong>')
-    // Bullet points: lines starting with - or *
     .replace(/^[\*\-] (.+)$/gm, '<li>$1</li>')
-    // Wrap consecutive <li> in <ul>
     .replace(/(<li>.*<\/li>(\n|$))+/g, m => `<ul>${m}</ul>`)
-    // Blank lines → paragraph break
     .replace(/\n{2,}/g, '<br><br>')
-    // Single newlines → line break
     .replace(/\n/g, '<br>');
 }
 
 // ─── State ───
 let _currentChatId = null;
-let _history = []; // { role: 'user'|'model', content: string } for Gemini context
+let _history = []; // { role: 'user'|'model', content: string }
+
+// ─── Voice state ───
+let _recognition = null;
+let _voiceState  = 'idle'; // 'idle' | 'recording' | 'confirm'
 
 // ─── Init ───
 export async function initChat() {
@@ -43,8 +41,124 @@ export async function initChat() {
 
   document.getElementById('btn-new-chat')?.addEventListener('click', startNewChat);
 
+  initVoiceInput();
+
   await loadRecents();
   await loadMostRecentChat();
+}
+
+// ─── Voice Input ───
+function initVoiceInput() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn    = document.getElementById('mic-btn');
+
+  if (!SpeechRec) {
+    // Browser doesn't support voice — hide the button
+    if (micBtn) micBtn.style.display = 'none';
+    return;
+  }
+
+  micBtn?.addEventListener('click', () => {
+    if (_voiceState === 'recording') stopRecording();
+    else startRecording(); // idle or confirm → start fresh
+  });
+
+  document.getElementById('voice-tick')?.addEventListener('click', () => {
+    setVoiceState('idle');
+    sendMessage();
+  });
+
+  document.getElementById('voice-cross')?.addEventListener('click', () => {
+    const input = document.getElementById('user-input');
+    if (input) { input.value = ''; input.style.height = 'auto'; }
+    setVoiceState('idle');
+  });
+}
+
+function startRecording() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const input     = document.getElementById('user-input');
+  if (!SpeechRec || !input) return;
+
+  input.value = '';
+
+  try {
+    _recognition = new SpeechRec();
+    _recognition.continuous      = false; // stops after natural pause → triggers onend
+    _recognition.interimResults  = true;
+    _recognition.lang            = 'en-US';
+
+    _recognition.onresult = (e) => {
+      let final = '', interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final  += e.results[i][0].transcript;
+        else                       interim += e.results[i][0].transcript;
+      }
+      input.value = final + interim;
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+    };
+
+    _recognition.onend = () => {
+      _recognition = null;
+      // If still in recording state (not manually overridden), move to confirm or idle
+      if (_voiceState === 'recording') {
+        setVoiceState(input.value.trim() ? 'confirm' : 'idle');
+      }
+    };
+
+    _recognition.onerror = () => {
+      _recognition = null;
+      setVoiceState('idle');
+    };
+
+    _recognition.start();
+    setVoiceState('recording');
+  } catch {
+    setVoiceState('idle');
+  }
+}
+
+function stopRecording() {
+  if (_recognition) {
+    _recognition.stop(); // will trigger onend → moves to confirm
+  }
+}
+
+function setVoiceState(state) {
+  _voiceState = state;
+
+  const micBtn    = document.getElementById('mic-btn');
+  const voiceActs = document.getElementById('voice-actions');
+  const sendBtn   = document.getElementById('send-btn');
+  const inputWrap = document.querySelector('.input-wrap');
+  const input     = document.getElementById('user-input');
+  if (!micBtn || !voiceActs || !sendBtn) return;
+
+  // Clear any existing classes
+  micBtn.classList.remove('recording');
+  inputWrap?.classList.remove('recording');
+
+  if (state === 'idle') {
+    micBtn.style.display    = '';
+    voiceActs.style.display = 'none';
+    sendBtn.style.display   = '';
+    if (input) input.placeholder = 'Ask anything — a struggle, a question, a doubt...';
+
+  } else if (state === 'recording') {
+    micBtn.classList.add('recording');
+    inputWrap?.classList.add('recording');
+    micBtn.style.display    = '';
+    voiceActs.style.display = 'none';
+    sendBtn.style.display   = 'none';
+    if (input) input.placeholder = 'Listening...';
+
+  } else if (state === 'confirm') {
+    micBtn.style.display    = 'none';
+    voiceActs.style.display = 'flex';
+    sendBtn.style.display   = 'none';
+    if (input) input.placeholder = 'Ask anything — a struggle, a question, a doubt...';
+  }
 }
 
 // ─── New / switch chats ───
@@ -57,7 +171,6 @@ export async function startNewChat() {
   document.querySelectorAll('.recents-item').forEach(i => i.classList.remove('active'));
   renderQuickChips();
 
-  // Scroll seek page into view
   const { showPage } = await import('./pages.js');
   showPage('seek');
 }
@@ -103,7 +216,6 @@ export async function loadChat(chatId) {
   } else {
     if (chips) chips.style.display = 'none';
     msgs.forEach(m => {
-      // Rebuild in-memory history for Gemini context
       _history.push({
         role:    m.role === 'ai' ? 'model' : 'user',
         content: m.content
@@ -112,7 +224,6 @@ export async function loadChat(chatId) {
     });
   }
 
-  // Mark active in sidebar
   document.querySelectorAll('.recents-item').forEach(i => {
     i.classList.toggle('active', i.dataset.chatId === chatId);
   });
@@ -136,7 +247,6 @@ async function createChat() {
   if (!chat) return null;
   _currentChatId = chat.id;
 
-  // Add to sidebar immediately
   const list = document.getElementById('recents-list');
   if (list) {
     const empty = list.querySelector('.recents-empty');
@@ -153,9 +263,11 @@ async function titleChat(text) {
   const title = text.slice(0, 35).trimEnd() + (text.length > 35 ? '…' : '');
   await sb.from('chats').update({ title }).eq('id', _currentChatId);
 
-  // Update sidebar
   const el = document.querySelector(`.recents-item[data-chat-id="${_currentChatId}"]`);
-  if (el) el.textContent = title;
+  if (el) {
+    const titleSpan = el.querySelector('.recents-item-title');
+    if (titleSpan) titleSpan.textContent = title;
+  }
 }
 
 // ─── Recents ───
@@ -218,7 +330,6 @@ async function deleteChat(chatId, el) {
 
   el.remove();
 
-  // If deleted chat was active, start a new one
   if (_currentChatId === chatId) {
     _currentChatId = null;
     _history = [];
@@ -229,7 +340,6 @@ async function deleteChat(chatId, el) {
     renderQuickChips();
   }
 
-  // Show empty state if no chats left
   const list = document.getElementById('recents-list');
   if (list && !list.querySelector('.recents-item')) {
     list.innerHTML = '<div class="recents-empty">No conversations yet</div>';
@@ -249,16 +359,15 @@ export async function sendMessage() {
   sendBtn.disabled = true;
   if (chips) chips.style.display = 'none';
 
-  // Lazy chat creation
   const isFirstMsg = !_currentChatId;
   if (!_currentChatId) {
     const id = await createChat();
     if (!id) { sendBtn.disabled = false; return; }
   }
 
-  appendMsg('user', text);
+  appendMsg('user', text, null, false);
+  saveMessage('user', text); // fire-and-forget (no need to await here)
 
-  // Create AI bubble immediately — stream tokens into it
   const bubble = createStreamBubble();
 
   try {
@@ -331,12 +440,89 @@ export function appendMsg(role, content, verse = null, persist = true) {
 
   const div = document.createElement('div');
   div.className = `msg ${isUser ? 'user' : 'ai'}`;
-  div.innerHTML = `
-    <div class="msg-av">${isUser ? initial : '॥'}</div>
-    <div class="msg-bubble">${bubbleContent}${verseHTML}</div>`;
+
+  // Avatar
+  const avDiv = document.createElement('div');
+  avDiv.className = 'msg-av';
+  avDiv.textContent = isUser ? initial : '॥';
+
+  // Bubble
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'msg-bubble';
+  bubbleDiv.innerHTML = bubbleContent + verseHTML;
+
+  // Edit button for user messages only
+  if (isUser) {
+    const editBtn = document.createElement('button');
+    editBtn.className = 'msg-edit-btn';
+    editBtn.title = 'Edit message';
+    editBtn.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M11 2l3 3-9 9H2v-3L11 2z"/></svg>`;
+    editBtn.addEventListener('click', () => handleEditMessage(div));
+    bubbleDiv.appendChild(editBtn);
+  }
+
+  div.appendChild(avDiv);
+  div.appendChild(bubbleDiv);
 
   container.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+
+// ─── Edit message ───
+async function handleEditMessage(msgEl) {
+  const container = document.getElementById('chat-messages');
+  const allMsgs   = Array.from(container.children);
+  const idx       = allMsgs.indexOf(msgEl);
+  if (idx === -1) return;
+
+  // Get original text before removing anything
+  const originalText = _history[idx]?.content || '';
+
+  // Remove this message and everything after it from the DOM
+  allMsgs.slice(idx).forEach(el => el.remove());
+
+  // Truncate in-memory history to just before this message
+  const keptHistory = _history.slice(0, idx);
+  _history = keptHistory;
+
+  // Sync DB: wipe all messages in this chat, re-insert only what's kept
+  if (sb && _currentChatId) {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) {
+        await sb.from('messages').delete().eq('chat_id', _currentChatId);
+
+        if (keptHistory.length) {
+          await sb.from('messages').insert(
+            keptHistory.map(m => ({
+              user_id:    session.user.id,
+              chat_id:    _currentChatId,
+              role:       m.role === 'model' ? 'ai' : 'user',
+              content:    m.content,
+              verse_data: null
+            }))
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Edit sync error:', err);
+    }
+  }
+
+  // Show chips again if chat is now empty
+  const chips = document.getElementById('quick-chips');
+  if (chips && !container.children.length) chips.style.display = 'flex';
+
+  // Drop the original text into the input so the user can edit + resend
+  const input = document.getElementById('user-input');
+  if (input) {
+    input.value = originalText;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+    input.focus();
+    input.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
 }
 
 // ─── Quick chips ───
@@ -371,7 +557,7 @@ async function saveMessage(role, content, verse = null) {
   });
 }
 
-// ─── Typing indicator ───
+// ─── Typing indicator (kept for potential future use) ───
 function showTyping() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
