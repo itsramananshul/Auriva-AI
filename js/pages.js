@@ -1,14 +1,21 @@
 import { fetchRandomVerse } from './api.js';
 import { CHAPTER_NAMES, VERSE_COUNTS } from './config.js';
+import { getProfile } from './app.js';
 
 let dailyVerse = null;
 let _verseLoading = false;
 
+function verseRef(v) {
+  if (v.ref) return v.ref;
+  return `Bhagavad Gita · Ch. ${v.chapter} · V. ${v.verse}`;
+}
+
 // ─── Load verse (called on app init) ───
 export async function loadDailyVerseCard() {
+  const source = getProfile()?.source || 'Bhagavad Gita';
   _verseLoading = true;
   try {
-    dailyVerse = await fetchRandomVerse();
+    dailyVerse = await fetchRandomVerse(source);
   } finally {
     _verseLoading = false;
   }
@@ -18,9 +25,9 @@ export async function loadDailyVerseCard() {
   const tag   = document.getElementById('mini-tag');
   const sans  = document.getElementById('mini-sanskrit');
   const trans = document.getElementById('mini-trans');
-  if (ref)  ref.textContent  = `Bhagavad Gita · Ch. ${dailyVerse.chapter} · V. ${dailyVerse.verse}`;
+  if (ref)  ref.textContent  = verseRef(dailyVerse);
   if (tag)  tag.textContent  = "Today's Verse";
-  if (sans) sans.textContent = dailyVerse.sanskrit;
+  if (sans) { sans.textContent = dailyVerse.sanskrit || ''; sans.style.display = dailyVerse.sanskrit ? '' : 'none'; }
   if (trans) trans.textContent = dailyVerse.translation;
 
   // If user is already on daily page, render it now
@@ -66,8 +73,8 @@ function renderDailyPage() {
   const ref   = document.getElementById('dv-ref');
   const sans  = document.getElementById('dv-sanskrit');
   const trans = document.getElementById('dv-trans');
-  if (ref)   ref.textContent  = `Bhagavad Gita · Chapter ${v.chapter} · Verse ${v.verse}`;
-  if (sans)  sans.textContent = v.sanskrit;
+  if (ref)   ref.textContent  = v.ref || `Bhagavad Gita · Chapter ${v.chapter} · Verse ${v.verse}`;
+  if (sans)  { sans.textContent = v.sanskrit || ''; sans.style.display = v.sanskrit ? '' : 'none'; }
   if (trans) trans.textContent = v.translation;
 }
 
@@ -75,15 +82,16 @@ export async function refreshDailyVerse() {
   const btn = document.getElementById('btn-new-verse');
   if (btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
 
+  const source = getProfile()?.source || 'Bhagavad Gita';
   try {
-    dailyVerse = await fetchRandomVerse();
+    dailyVerse = await fetchRandomVerse(source);
     renderDailyPage();
     // Also refresh mini card
     const ref   = document.getElementById('mini-ref');
     const sans  = document.getElementById('mini-sanskrit');
     const trans = document.getElementById('mini-trans');
-    if (ref)   ref.textContent  = `Bhagavad Gita · Ch. ${dailyVerse.chapter} · V. ${dailyVerse.verse}`;
-    if (sans)  sans.textContent = dailyVerse.sanskrit;
+    if (ref)   ref.textContent  = verseRef(dailyVerse);
+    if (sans)  { sans.textContent = dailyVerse.sanskrit || ''; sans.style.display = dailyVerse.sanskrit ? '' : 'none'; }
     if (trans) trans.textContent = dailyVerse.translation;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Show another verse'; }

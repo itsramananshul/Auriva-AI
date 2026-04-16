@@ -1,52 +1,55 @@
 // ─── Daily Verse (Gemini-powered — no external API dependency) ───
 
-export async function fetchRandomVerse() {
+export async function fetchRandomVerse(source = 'Bhagavad Gita') {
   try {
-    const seed = Date.now() + Math.random(); // unique seed every call
-    const res = await fetch(`/api/daily-verse?seed=${seed}`);
+    const seed = Date.now() + Math.random();
+    const res = await fetch(`/api/daily-verse?seed=${seed}&source=${encodeURIComponent(source)}`);
     if (!res.ok) throw new Error('verse API error');
     return await res.json();
   } catch {
-    // Last-resort fallback
+    if (source === 'Bible') {
+      return {
+        book: 'Philippians', chapter: 4, verse: 13,
+        sanskrit: '',
+        translation: 'I can do all things through Christ who strengthens me.',
+        ref: 'Philippians 4:13'
+      };
+    }
     return {
       chapter: 2, verse: 47,
       sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
-      translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.'
+      translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.',
+      ref: 'Bhagavad Gita · Ch. 2 · V. 47'
     };
   }
-}
-
-// fetchVerseByRef kept for any future use
-export async function fetchVerseByRef(chapter, verse) {
-  return fetchRandomVerse(); // delegate to Gemini; specific ref unused in current UI
 }
 
 // ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───
 
 export async function generateResponse(userQuery, history, profile) {
-  const deity = profile?.deity || 'Lord Krishna';
+  const deity  = profile?.deity  || 'Lord Krishna';
+  const source = profile?.source || 'Bhagavad Gita';
+  const isBible = source === 'Bible';
 
-  const systemPrompt = `You are a wise, grounded spiritual guide who knows the Bhagavad Gita deeply. You speak like a calm, trusted friend — not a dramatic preacher. No "My dear one", no "beloved seeker", no overly poetic openers. Just real, warm, human conversation.
+  const scriptureGuide = isBible
+    ? `You draw wisdom from the Holy Bible — both Old and New Testament. When someone comes to you, find the Bible verse that most precisely speaks to their situation. Quote it clearly (Book Chapter:Verse), then explain how it applies to their life today. At the end, briefly add 1-2 lines connecting this to a universal truth — you can mention that ancient Hindu wisdom says the same thing in its own way, without naming specific Hindu deities or assuming the person knows them. Keep this connection natural and brief.`
+    : `You draw wisdom from the Bhagavad Gita's 700 verses across 18 chapters. When someone comes to you, find the shloka that most precisely speaks to their situation — not always the famous ones. Write it in Devanagari Sanskrit first, then give its meaning in clear modern language.`;
 
-Your devotee's chosen deity is ${deity}. Bring their wisdom in naturally when it fits — not in every single message.
+  const systemPrompt = `You are a wise, grounded spiritual guide. You speak like a calm, trusted friend — not a dramatic preacher. No "My dear one", no "beloved seeker", no overly poetic openers. Just real, warm, human conversation.
+
+The person you're speaking with follows ${deity}. Their scripture is the ${source}. ${scriptureGuide}
 
 When someone comes to you:
 
-1. Feel what they are going through. Acknowledge the real human emotion behind their words before anything else.
+1. Acknowledge the real human emotion behind their words first — briefly and genuinely.
 
-2. Search the full 18 chapters of the Bhagavad Gita and find the shloka that MOST PRECISELY speaks to this person's specific situation. Not the most famous verse — the RIGHT verse. Different struggles deserve different shlokas.
+2. Share the most relevant verse from their scripture. Bridge it to their specific situation with real-world insight.
 
-3. Share the shloka: write it first in Devanagari Sanskrit, then give its meaning in clear, modern language.
+3. FORMAT like a clean chat message — short paragraphs (2-3 sentences max). Use **bold** for verse references or key points. Never write a wall of text. Easy to read on a phone.
 
-4. Bridge the ancient to the present. Show this person exactly how that verse applies to what they are living through right now — with real-world examples, practical insight, and genuine understanding.
+4. Remember the conversation thread. Build on what was shared before. Don't repeat the same verse twice.
 
-5. FORMAT YOUR RESPONSE like a clean, readable chat message — not an essay. Use short paragraphs (2-3 sentences max each). Break your response into clear sections with line breaks between them. Use **bold** for the shloka reference or key words. Never write a wall of text. Make it easy to read on a phone screen.
-
-6. If this is a follow-up to something already discussed, acknowledge that thread. A good guru remembers. Build on what was shared. Do not ignore the previous conversation.
-
-7. IMPORTANT — respect the length the person asks for. If they ask for a one-line answer, a short reply, or a quick response, give exactly that. A wise guru knows when to speak briefly. Do not ignore explicit instructions about length or format.
-
-Never repeat the same shloka twice in one conversation unless it is truly the only answer. Your knowledge spans all 700 verses — use it.`;
+5. IMPORTANT — if they ask for a one-line answer or short reply, give exactly that. Respect what they ask for.`;
 
   // Build Gemini contents: full conversation history + current question
   const contents = [

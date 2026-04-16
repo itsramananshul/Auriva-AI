@@ -187,9 +187,50 @@ function makeRecentEl(chatId, title) {
   const el = document.createElement('div');
   el.className = 'recents-item';
   el.dataset.chatId = chatId;
-  el.textContent = title;
-  el.addEventListener('click', () => loadChat(chatId));
+
+  const titleEl = document.createElement('span');
+  titleEl.className = 'recents-item-title';
+  titleEl.textContent = title;
+  titleEl.addEventListener('click', () => loadChat(chatId));
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'recents-delete';
+  delBtn.innerHTML = '×';
+  delBtn.title = 'Delete chat';
+  delBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await deleteChat(chatId, el);
+  });
+
+  el.appendChild(titleEl);
+  el.appendChild(delBtn);
   return el;
+}
+
+async function deleteChat(chatId, el) {
+  if (!sb) return;
+  // Delete messages first, then the chat
+  await sb.from('messages').delete().eq('chat_id', chatId);
+  await sb.from('chats').delete().eq('id', chatId);
+
+  el.remove();
+
+  // If deleted chat was active, start a new one
+  if (_currentChatId === chatId) {
+    _currentChatId = null;
+    _history = [];
+    const container = document.getElementById('chat-messages');
+    if (container) container.innerHTML = '';
+    const chips = document.getElementById('quick-chips');
+    if (chips) chips.style.display = 'flex';
+    renderQuickChips();
+  }
+
+  // Show empty state if no chats left
+  const list = document.getElementById('recents-list');
+  if (list && !list.querySelector('.recents-item')) {
+    list.innerHTML = '<div class="recents-empty">No conversations yet</div>';
+  }
 }
 
 // ─── Send ───

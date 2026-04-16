@@ -87,6 +87,9 @@ async function initApp(user, profile) {
   // Signout
   document.getElementById('btn-signout')?.addEventListener('click', handleSignout);
 
+  // Profile edit
+  initProfileEdit(user);
+
   // Mobile drawer
   const sidebar  = document.querySelector('.sidebar');
   const overlay  = document.getElementById('mob-overlay');
@@ -148,6 +151,69 @@ export function initOnboarding() {
       document.getElementById('onboard-err').textContent = err.message;
     } finally {
       btn.disabled = false; btn.textContent = 'Enter Auriva AI';
+    }
+  });
+}
+
+// ─── Profile Edit Modal ───
+function initProfileEdit(user) {
+  const overlay   = document.getElementById('modal-overlay');
+  const editBtn   = document.getElementById('btn-edit-profile');
+  const cancelBtn = document.getElementById('btn-modal-cancel');
+  const saveBtn   = document.getElementById('btn-modal-save');
+  const nameInput = document.getElementById('edit-name');
+  const deitySelect = document.getElementById('edit-deity');
+  const langSelect  = document.getElementById('edit-lang');
+  const errEl     = document.getElementById('modal-err');
+
+  const openModal = () => {
+    // Pre-fill with current profile values
+    nameInput.value = _profile?.full_name || '';
+    const currentVal = `${_profile?.deity}|${_profile?.source}`;
+    const opt = deitySelect.querySelector(`option[value="${currentVal}"]`);
+    if (opt) deitySelect.value = currentVal;
+    langSelect.value = _profile?.language || 'English';
+    errEl.textContent = '';
+    overlay.classList.add('open');
+  };
+
+  editBtn?.addEventListener('click', openModal);
+  cancelBtn?.addEventListener('click', () => overlay.classList.remove('open'));
+  overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+  saveBtn?.addEventListener('click', async () => {
+    if (!sb) return;
+    const [deity, source] = (deitySelect.value || '').split('|');
+    const name = nameInput.value.trim();
+    const lang = langSelect.value;
+
+    if (!name) { errEl.textContent = 'Please enter your name.'; return; }
+    if (!deity || !source) { errEl.textContent = 'Please select a path.'; return; }
+
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+    errEl.textContent = '';
+
+    try {
+      const { error } = await sb.from('profiles').update({
+        full_name: name, deity, source, language: lang
+      }).eq('id', user.id);
+
+      if (error) throw new Error(error.message);
+
+      // Update local profile state
+      _profile = { ..._profile, full_name: name, deity, source, language: lang };
+
+      // Update sidebar display
+      setEl('sidebar-name', name);
+      setEl('sidebar-avatar', name[0]?.toUpperCase() || 'S');
+      setEl('sidebar-deity', deity);
+      setEl('sidebar-source', `${source} · ${lang}`);
+
+      overlay.classList.remove('open');
+    } catch (err) {
+      errEl.textContent = err.message;
+    } finally {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save Changes';
     }
   });
 }

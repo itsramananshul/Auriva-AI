@@ -324,3 +324,58 @@
   font-size: 18px; color: var(--gold); font-style: italic;
 }
 .deity-opt .deity-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── PROFILE EDIT MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.7);
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  width: 420px; max-width: 92vw;
+  background: var(--surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: 14px; padding: 2rem;
+  animation: fadeUp 0.25s ease;
+}
+.modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 300;
+  color: var(--gold); margin-bottom: 1.5rem;
+}
+.modal-actions {
+  display: flex; gap: 10px; margin-top: 1.5rem;
+}
+.modal-cancel-btn {
+  flex: 1; padding: 10px; border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  font-family: 'Outfit', sans-serif; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+}
+.modal-cancel-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.modal-actions .auth-btn { flex: 2; margin-top: 0; }
+
+/* ── RECENTS DELETE BUTTON ── */
+.recents-item {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 6px;
+}
+.recents-item-title {
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.recents-delete {
+  flex-shrink: 0; opacity: 0;
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 2px 4px;
+  border-radius: 4px; line-height: 1;
+  transition: all 0.15s;
+}
+.recents-item:hover .recents-delete { opacity: 1; }
+.recents-delete:hover { color: var(--danger); background: rgba(226,75,74,0.1); }
+

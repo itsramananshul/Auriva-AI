@@ -1,14 +1,28 @@
 export default async function handler(req, res) {
-  // Random seed passed from client to encourage variety
-  const seed = req.query.seed || Math.random();
+  const seed   = req.query.seed   || Math.random();
+  const source = req.query.source || 'Bhagavad Gita';
+  const isBible = source === 'Bible';
 
-  const prompt = `Return a random verse from the Bhagavad Gita as a JSON object. The seed for randomness is: ${seed}.
-
+  const prompt = isBible
+    ? `Return a random Bible verse as a JSON object. Seed: ${seed}.
+Rules:
+- Pick a genuinely varied verse from across both Old and New Testament
+- Do NOT always pick the same famous ones. Explore all books.
+- Respond with ONLY valid JSON — no markdown, no code fences, no explanation
+- JSON must have exactly these fields:
+  {
+    "ref": "<Book Chapter:Verse e.g. John 3:16>",
+    "chapter": <chapter number>,
+    "verse": <verse number>,
+    "sanskrit": "",
+    "translation": "<The verse text in full, then 1 sentence of context>"
+  }`
+    : `Return a random verse from the Bhagavad Gita as a JSON object. Seed: ${seed}.
 Rules:
 - Pick a genuinely random verse spread across all 18 chapters
 - Do NOT always pick the famous ones (like 2.47 or 4.7). Explore all chapters.
-- Respond with ONLY a valid JSON object — no markdown, no code fences, no explanation
-- The JSON must have exactly these fields:
+- Respond with ONLY valid JSON — no markdown, no code fences, no explanation
+- JSON must have exactly these fields:
   {
     "chapter": <number>,
     "verse": <number>,
@@ -45,15 +59,21 @@ Rules:
 
     return res.status(200).json(verse);
   } catch (err) {
-    // Hard fallback — at least return something different-looking each run
+    if (isBible) {
+      const fallbacks = [
+        { ref: 'Philippians 4:13', chapter: 4, verse: 13, sanskrit: '', translation: 'I can do all things through Christ who strengthens me.' },
+        { ref: 'Jeremiah 29:11',   chapter: 29, verse: 11, sanskrit: '', translation: 'For I know the plans I have for you, declares the Lord — plans to prosper you and not to harm you, plans to give you hope and a future.' },
+        { ref: 'Psalm 23:1',       chapter: 23, verse: 1,  sanskrit: '', translation: 'The Lord is my shepherd; I shall not want.' },
+        { ref: 'Romans 8:28',      chapter: 8,  verse: 28, sanskrit: '', translation: 'And we know that in all things God works for the good of those who love Him.' },
+        { ref: 'Isaiah 40:31',     chapter: 40, verse: 31, sanskrit: '', translation: 'Those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary.' },
+      ];
+      return res.status(200).json(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
+    }
     const fallbacks = [
       { chapter: 2, verse: 47, sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥', translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.' },
-      { chapter: 4, verse: 7, sanskrit: 'यदा यदा हि धर्मस्य ग्लानिर्भवति भारत।\nअभ्युत्थानमधर्मस्य तदात्मानं सृजाम्यहम्॥', translation: 'Whenever there is a decline in righteousness and an increase in unrighteousness, O Arjuna, at that time I manifest Myself on earth.' },
-      { chapter: 3, verse: 27, sanskrit: 'प्रकृतेः क्रियमाणानि गुणैः कर्माणि सर्वशः।\nअहङ्कारविमूढात्मा कर्ताहमिति मन्यते॥', translation: 'All actions are performed by the modes of material nature, yet the deluded soul, confused by ego, thinks: I am the doer.' },
-      { chapter: 6, verse: 5, sanskrit: 'उद्धरेदात्मनात्मानं नात्मानमवसादयेत्।\nआत्मैव ह्यात्मनो बन्धुरात्मैव रिपुरात्मनः॥', translation: 'One must elevate oneself by one\'s own mind, not degrade oneself. The mind alone is one\'s friend and one\'s enemy.' },
-      { chapter: 9, verse: 22, sanskrit: 'अनन्याश्चिन्तयन्तो मां ये जनाः पर्युपासते।\nतेषां नित्याभियुक्तानां योगक्षेमं वहाम्यहम्॥', translation: 'For those who worship Me with devotion, meditating on My transcendental form, I carry what they lack and preserve what they have.' },
+      { chapter: 4, verse: 7,  sanskrit: 'यदा यदा हि धर्मस्य ग्लानिर्भवति भारत।\nअभ्युत्थानमधर्मस्य तदात्मानं सृजाम्यहम्॥', translation: 'Whenever there is a decline in righteousness, O Arjuna, I manifest Myself on earth.' },
+      { chapter: 6, verse: 5,  sanskrit: 'उद्धरेदात्मनात्मानं नात्मानमवसादयेत्।\nआत्मैव ह्यात्मनो बन्धुरात्मैव रिपुरात्मनः॥', translation: 'One must elevate oneself by one\'s own mind, not degrade oneself. The mind alone is one\'s friend and one\'s enemy.' },
     ];
-    const pick = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-    return res.status(200).json(pick);
+    return res.status(200).json(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
   }
 }
