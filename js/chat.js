@@ -1,5 +1,5 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
-import { QUICK_PROMPTS } from './config.js';
+import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
 import { getProfile, sb } from './app.js';
 // Simple markdown renderer — no external dependency
 function renderMarkdown(text) {
@@ -314,7 +314,9 @@ export function appendMsg(role, content, verse = null, persist = true) {
 export function renderQuickChips() {
   const el = document.getElementById('quick-chips');
   if (!el) return;
-  el.innerHTML = QUICK_PROMPTS.map(p =>
+  const isBible = getProfile()?.source === 'Bible';
+  const prompts = isBible ? QUICK_PROMPTS_BIBLE : QUICK_PROMPTS_GITA;
+  el.innerHTML = prompts.map(p =>
     `<div class="chip" data-prompt="${p}">${p}</div>`
   ).join('');
   el.querySelectorAll('.chip').forEach(chip => {

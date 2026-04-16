@@ -42,14 +42,17 @@ async function getGitaVerse() {
   if (!res.ok) throw new Error(`Gita API ${res.status}`);
   const data = await res.json();
 
-  // Pick best available English translation
+  // Pick best available English translation — skip "did not comment" placeholders
+  const isValid = t => t && !t.toLowerCase().includes('did not comment') && t.trim().length > 10;
   const translation =
-    data.purohit?.et ||
-    data.siva?.et    ||
-    data.raman?.et   ||
-    data.san?.et     ||
-    data.tej?.ht     ||
+    (isValid(data.purohit?.et) ? data.purohit.et : null) ||
+    (isValid(data.siva?.et)    ? data.siva.et    : null) ||
+    (isValid(data.raman?.et)   ? data.raman.et   : null) ||
+    (isValid(data.san?.et)     ? data.san.et     : null) ||
+    (isValid(data.tej?.ht)     ? data.tej.ht     : null) ||
     '';
+
+  if (!translation.trim()) throw new Error('No valid translation for this verse — retry');
 
   return {
     chapter,
