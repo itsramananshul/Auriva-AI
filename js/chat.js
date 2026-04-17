@@ -281,7 +281,7 @@ function speakVMResponse(text) {
 
 // ─── VAD: raw mic monitoring to detect interruption while AI speaks ───
 async function startVAD() {
-  if (_vadStream) return; // already running
+  if (_vadStream) return;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     _vadStream   = stream;
@@ -291,19 +291,33 @@ async function startVAD() {
     analyser.fftSize               = 512;
     analyser.smoothingTimeConstant = 0.4;
     source.connect(analyser);
-
     const data = new Uint8Array(analyser.frequencyBinCount);
-    let ticks  = 0; // consecutive frames above threshold
 
+    // ── Calibrate noise floor (500ms) ──
+    // Sample ambient sound (background music, room noise) to set a personalised
+    // threshold — so only something significantly louder triggers the interrupt
+    const samples = [];
+    await new Promise(resolve => {
+      const cal = setInterval(() => {
+        analyser.getByteFrequencyData(data);
+        samples.push(Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length));
+      }, 80);
+      setTimeout(() => { clearInterval(cal); resolve(); }, 500);
+    });
+
+    const noiseFloor = samples.reduce((a, b) => a + b, 0) / samples.length;
+    // Voice must be 2× louder than the background to trigger — handles music/TV/etc.
+    const threshold  = Math.max(noiseFloor * 2.0, 20);
+
+    let ticks = 0;
     _vadInterval = setInterval(() => {
+      if (!_vadStream) { clearInterval(_vadInterval); return; }
       analyser.getByteFrequencyData(data);
-      // RMS volume — more stable than peak for voice detection
       const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length);
 
-      if (rms > 18) {
+      if (rms > threshold) {
         ticks++;
         if (ticks >= 3 && _vmState === 'speaking') {
-          // User is speaking — interrupt AI immediately
           window.speechSynthesis.cancel();
           clearInterval(_vmKeepAlive);
           stopVAD();
@@ -314,9 +328,9 @@ async function startVAD() {
       } else {
         ticks = 0;
       }
-    }, 80); // check every 80ms
+    }, 80);
   } catch {
-    // Mic permission denied or not available — VAD won't work, that's ok
+    // Mic permission denied — VAD won't work, that's ok
   }
 }
 
