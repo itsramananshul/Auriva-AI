@@ -1,4 +1,21 @@
-import { sb } from './app.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// ─── Standalone Supabase client for auth page ───
+// Does NOT import app.js — avoids circular deps + top-level await on older Safari
+let sb = null;
+
+async function getSb() {
+  if (sb) return sb;
+  try {
+    const cfg = await fetch('/api/app-config').then(r => r.json());
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    }
+  } catch {
+    // no-op — will show error to user on action
+  }
+  return sb;
+}
 
 export function initAuth() {
   // Tab switching
@@ -16,6 +33,9 @@ export function initAuth() {
 
   document.getElementById('btn-login')?.addEventListener('click', handleLogin);
   document.getElementById('btn-signup')?.addEventListener('click', handleSignup);
+
+  // Eagerly warm up the connection so first click is instant
+  getSb();
 }
 
 export function switchTab(tab) {
@@ -36,9 +56,14 @@ export async function handleLogin() {
   setLoading(btn, 'Entering...', true);
 
   try {
-    if (!sb) throw new Error('Not connected. Run via `vercel dev` locally.');
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) setAuthErr(error.message);
+    const client = await getSb();
+    if (!client) throw new Error('Not connected. Run via `vercel dev` locally.');
+    const { error } = await client.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      setAuthErr(error.message);
+    } else {
+      window.location.href = 'app.html';
+    }
   } catch (err) {
     setAuthErr(err.message);
   } finally {
@@ -58,8 +83,9 @@ export async function handleSignup() {
   setLoading(btn, 'Creating...', true);
 
   try {
-    if (!sb) throw new Error('Not connected. Run via `vercel dev` locally.');
-    const { error } = await sb.auth.signUp({
+    const client = await getSb();
+    if (!client) throw new Error('Not connected. Run via `vercel dev` locally.');
+    const { error } = await client.auth.signUp({
       email, password: pass,
       options: { data: { full_name: name } }
     });
@@ -73,7 +99,8 @@ export async function handleSignup() {
 }
 
 export async function handleSignout() {
-  await sb.auth.signOut();
+  const client = await getSb();
+  if (client) await client.auth.signOut();
   window.location.href = 'index.html';
 }
 
