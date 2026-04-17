@@ -1,9 +1,9 @@
-html, body { overflow: hidden; }
+html, body { overflow: hidden; height: 100dvh; }
 
 .layout {
   display: grid;
   grid-template-columns: 250px 1fr;
-  height: 100vh;
+  height: 100dvh;
 }
 
 /* ── SIDEBAR ── */
@@ -164,6 +164,8 @@ html, body { overflow: hidden; }
   flex-direction: column;
   background: var(--black);
   overflow: hidden;
+  height: 100dvh;
+  min-height: 0;
 }
 
 .topbar {
@@ -197,6 +199,13 @@ html, body { overflow: hidden; }
 
 /* ── MOBILE BOTTOM NAV (disabled — sidebar covers all navigation) ── */
 .mobile-nav { display: none !important; }
+
+/* ── TABLET (iPad portrait + landscape) ── */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .layout { grid-template-columns: 210px 1fr; }
+  .sidebar { padding: 1.25rem 1rem; }
+  .topbar { padding: 1rem 1.25rem; }
+}
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {

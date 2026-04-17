@@ -301,7 +301,7 @@
 /* ── ONBOARDING ── */
 #onboard-screen {
   display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; background: var(--black);
+  min-height: 100dvh; background: var(--black);
 }
 .onboard-box {
   width: 480px; background: var(--surface);
