@@ -27,11 +27,14 @@ export async function fetchRandomVerse(source = 'Bhagavad Gita') {
 // ─── AI RESPONSE (Gemini picks the right shloka, keeps conversation context) ───
 
 export async function generateResponse(userQuery, history, profile, dailyVerse = null, onChunk = null) {
-  const deity  = profile?.deity  || 'Lord Krishna';
-  const source = profile?.source || 'Bhagavad Gita';
+  const deity   = profile?.deity  || 'Lord Krishna';
+  const source  = profile?.source || 'Bhagavad Gita';
   const isBible = source === 'Bible';
+  const isQuran = source === 'Quran';
 
-  const scriptureGuide = isBible
+  const scriptureGuide = isQuran
+    ? `You draw wisdom from the Holy Quran — 114 surahs, 6236 ayahs. When someone comes to you, find the ayah that most precisely speaks to their situation — not always the famous ones. Write it in Arabic first, then give its meaning in clear modern English. Cite it as (Surah Name, Chapter:Ayah). Speak with the calm certainty and mercy that Islam teaches — Allah is Al-Rahman, Al-Rahim, the Most Gracious, the Most Merciful.`
+    : isBible
     ? `You draw wisdom from the Holy Bible — both Old and New Testament. When someone comes to you, find the Bible verse that most precisely speaks to their situation. Quote it clearly (Book Chapter:Verse), then explain how it applies to their life today. At the end, briefly add 1-2 lines connecting this to a universal truth — you can mention that ancient Hindu wisdom says the same thing in its own way, without naming specific Hindu deities or assuming the person knows them. Keep this connection natural and brief.`
     : `You draw wisdom from the Bhagavad Gita's 700 verses across 18 chapters. When someone comes to you, find the shloka that most precisely speaks to their situation — not always the famous ones. Write it in Devanagari Sanskrit first, then give its meaning in clear modern language.`;
 
@@ -40,7 +43,8 @@ export async function generateResponse(userQuery, history, profile, dailyVerse =
   if (dailyVerse) {
     const ref = dailyVerse.ref ||
       `Bhagavad Gita Chapter ${dailyVerse.chapter}, Verse ${dailyVerse.verse}`;
-    verseContext = `\n\nToday's verse shown to this person is:\n**${ref}** — "${dailyVerse.translation}"${dailyVerse.sanskrit ? `\nSanskrit: ${dailyVerse.sanskrit}` : ''}\nIf they ask about "today's verse" or "this verse", refer to this one.`;
+    const scriptLabel = isQuran ? 'Arabic' : 'Sanskrit';
+    verseContext = `\n\nToday's verse shown to this person is:\n**${ref}** — "${dailyVerse.translation}"${dailyVerse.sanskrit ? `\n${scriptLabel}: ${dailyVerse.sanskrit}` : ''}\nIf they ask about "today's verse" or "this verse", refer to this one.`;
   }
 
   const systemPrompt = `You are a wise, grounded spiritual guide. You speak like a calm, trusted friend — not a dramatic preacher. No "My dear one", no "beloved seeker", no overly poetic openers. Just real, warm, human conversation.

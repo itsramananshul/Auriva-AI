@@ -1,5 +1,5 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
-import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE } from './config.js';
+import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN } from './config.js';
 import { getProfile, getDailyVerse, showConfirm, sb } from './app.js';
 
 // ─── Markdown renderer ───
@@ -138,7 +138,7 @@ function startVMListening() {
         // Restart recognition so accumulated results start fresh (no stale pre-interrupt speech)
         const old = _vmRec;
         _vmRec = null;
-        if (old) { old.onend = null; old.stop(); }
+        if (old) { old.onresult = null; old.onend = null; old.stop(); }
         setTimeout(() => { if (_vmActive && !_vmRec) startVMListening(); }, 300);
         return;
       }
@@ -894,8 +894,10 @@ async function handleEditMessage(msgEl) {
 export function renderQuickChips() {
   const el = document.getElementById('quick-chips');
   if (!el) return;
-  const isBible = getProfile()?.source === 'Bible';
-  const prompts = isBible ? QUICK_PROMPTS_BIBLE : QUICK_PROMPTS_GITA;
+  const source  = getProfile()?.source;
+  const prompts = source === 'Bible' ? QUICK_PROMPTS_BIBLE
+                : source === 'Quran' ? QUICK_PROMPTS_QURAN
+                : QUICK_PROMPTS_GITA;
   el.innerHTML = prompts.map(p =>
     `<div class="chip" data-prompt="${p}">${p}</div>`
   ).join('');

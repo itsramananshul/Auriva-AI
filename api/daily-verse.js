@@ -1,5 +1,19 @@
 const GITA_VERSE_COUNTS = [47,72,43,42,29,47,30,28,34,42,55,20,35,27,20,24,28,78];
 
+const QURAN_SURAH_COUNTS = [
+  7,286,200,176,120,165,206,75,129,109,
+  123,111,43,52,99,128,111,110,98,135,
+  112,78,118,64,77,227,93,88,69,60,
+  34,30,73,54,45,83,182,88,75,85,
+  54,53,89,59,37,35,38,29,18,45,
+  60,49,62,55,78,96,29,22,24,13,
+  14,11,11,18,12,12,30,52,52,44,
+  28,28,20,56,40,31,50,22,31,13,
+  28,14,27,18,17,24,20,22,23,17,
+  22,13,4,31,9,11,13,11,10,11,
+  19,12,4,4,6,7,5,4,5,4,6,7,3,6,3,4,4,3,6,3
+];
+
 // API.Bible IDs for added translations
 const BIBLE_IDS = {
   NIV: '78a9f6124f344018-01',
@@ -8,13 +22,17 @@ const BIBLE_IDS = {
 };
 
 export default async function handler(req, res) {
-  const seed    = req.query.seed   || Math.random();
-  const source  = req.query.source || 'Bhagavad Gita';
-  const isBible = source === 'Bible';
+  const seed     = req.query.seed   || Math.random();
+  const source   = req.query.source || 'Bhagavad Gita';
+  const isBible  = source === 'Bible';
+  const isQuran  = source === 'Quran';
 
   // Tier 1: Real API
   try {
-    const verse = isBible ? await getBibleVerse(seed) : await getGitaVerse();
+    let verse;
+    if (isQuran)      verse = await getQuranVerse();
+    else if (isBible) verse = await getBibleVerse(seed);
+    else              verse = await getGitaVerse();
     return res.status(200).json(verse);
   } catch (err) {
     console.error('[daily-verse] Real API failed:', err.message);
@@ -22,14 +40,42 @@ export default async function handler(req, res) {
 
   // Tier 2: Gemini AI generation
   try {
-    const verse = isBible ? await getGeminiVerse('Bible', seed) : await getGeminiVerse('Bhagavad Gita', seed);
+    const verse = await getGeminiVerse(source, seed);
     return res.status(200).json(verse);
   } catch (err) {
     console.error('[daily-verse] Gemini fallback failed:', err.message);
   }
 
   // Tier 3: Hardcoded fallback — always works
-  return res.status(200).json(isBible ? bibleFallback() : gitaFallback());
+  if (isQuran)      return res.status(200).json(quranFallback());
+  else if (isBible) return res.status(200).json(bibleFallback());
+  else              return res.status(200).json(gitaFallback());
+}
+
+// ─── Quran — alquran.cloud (free, no API key) ───
+async function getQuranVerse() {
+  const surah = Math.floor(Math.random() * 114) + 1;
+  const maxV  = QURAN_SURAH_COUNTS[surah - 1];
+  const ayah  = Math.floor(Math.random() * maxV) + 1;
+
+  const res = await fetch(
+    `https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/editions/quran-uthmani,en.sahih`
+  );
+  if (!res.ok) throw new Error(`Quran API ${res.status}`);
+  const data = await res.json();
+
+  if (data.code !== 200 || !data.data?.length) throw new Error('Invalid Quran API response');
+
+  const arabic  = data.data[0]; // quran-uthmani edition
+  const english = data.data[1]; // en.sahih edition
+
+  return {
+    ref:         `Surah ${arabic.surah.englishName} ${surah}:${ayah}`,
+    chapter:     surah,
+    verse:       ayah,
+    sanskrit:    arabic.text,   // Arabic text stored in sanskrit field (same UI slot)
+    translation: english.text
+  };
 }
 
 // ─── Bhagavad Gita — vedicscriptures.github.io ───
@@ -123,8 +169,12 @@ Respond with ONLY valid JSON, no markdown:
 
 // ─── Tier 2: Gemini AI fallback (when real APIs fail) ───
 async function getGeminiVerse(source, seed) {
+  const isQuran = source === 'Quran';
   const isBible = source === 'Bible';
-  const prompt = isBible
+  const prompt = isQuran
+    ? `Return a random Quran ayah as JSON. Seed: ${seed}. ONLY JSON, no markdown:
+{"ref":"Surah <EnglishName> <surahNumber>:<ayahNumber>","chapter":<surahNum>,"verse":<ayahNum>,"sanskrit":"<Arabic text>","translation":"<English meaning>"}`
+    : isBible
     ? `Return a random Bible verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
 {"ref":"<Book Chapter:Verse>","chapter":<n>,"verse":<n>,"sanskrit":"","translation":"<exact verse text>"}`
     : `Return a random Bhagavad Gita verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
@@ -148,6 +198,17 @@ async function getGeminiVerse(source, seed) {
 }
 
 // ─── Tier 3: Hardcoded fallbacks (always works, no network needed) ───
+function quranFallback() {
+  const options = [
+    { ref: 'Surah Al-Baqarah 2:286', chapter: 2, verse: 286, sanskrit: 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا', translation: 'Allah does not burden a soul beyond that it can bear.' },
+    { ref: 'Surah Ash-Sharh 94:5',   chapter: 94, verse: 5,  sanskrit: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا', translation: 'For indeed, with hardship will be ease.' },
+    { ref: 'Surah Az-Zumar 39:53',   chapter: 39, verse: 53, sanskrit: 'إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا', translation: 'Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.' },
+    { ref: 'Surah Al-Imran 3:139',   chapter: 3,  verse: 139, sanskrit: 'وَلَا تَهِنُوا وَلَا تَحْزَنُوا وَأَنتُمُ الْأَعْلَوْنَ', translation: 'Do not weaken and do not grieve, for you will be superior if you are true believers.' },
+    { ref: 'Surah At-Talaq 65:3',    chapter: 65, verse: 3,  sanskrit: 'وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ', translation: 'And whoever relies upon Allah — then He is sufficient for him.' },
+  ];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
 function gitaFallback() {
   const options = [
     { chapter: 2, verse: 47, sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥', translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.' },
