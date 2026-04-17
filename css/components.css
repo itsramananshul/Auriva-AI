@@ -336,9 +336,13 @@
 }
 .deity-opt:hover { border-color: var(--border-bright); }
 .deity-opt.selected { border-color: var(--gold); background: var(--gold-glow); }
+.deity-opt .deity-sym {
+  font-size: 20px; line-height: 1; margin-bottom: 6px;
+  color: var(--gold); opacity: 0.8;
+}
 .deity-opt .deity-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 18px; color: var(--gold); font-style: italic;
+  font-size: 17px; color: var(--gold); font-style: italic;
 }
 .deity-opt .deity-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 

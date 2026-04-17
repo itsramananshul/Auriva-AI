@@ -1,5 +1,9 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
-import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH } from './config.js';
+import {
+  QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH,
+  QUICK_PROMPTS_BUDDHA, QUICK_PROMPTS_TAO, QUICK_PROMPTS_TORAH,
+  QUICK_PROMPTS_JAIN, QUICK_PROMPTS_CONFUCIUS, QUICK_PROMPTS_BAHAI
+} from './config.js';
 import { getProfile, getDailyVerse, showConfirm, getSb, getSymbol } from './app.js';
 
 // ─── Markdown renderer ───
@@ -992,9 +996,15 @@ export function renderQuickChips() {
   const el = document.getElementById('quick-chips');
   if (!el) return;
   const source  = getProfile()?.source;
-  const prompts = source === 'Bible'            ? QUICK_PROMPTS_BIBLE
-                : source === 'Quran'            ? QUICK_PROMPTS_QURAN
-                : source === 'Guru Granth Sahib'? QUICK_PROMPTS_SIKH
+  const prompts = source === 'Bible'             ? QUICK_PROMPTS_BIBLE
+                : source === 'Quran'             ? QUICK_PROMPTS_QURAN
+                : source === 'Guru Granth Sahib' ? QUICK_PROMPTS_SIKH
+                : source === 'Dhammapada'         ? QUICK_PROMPTS_BUDDHA
+                : source === 'Tao Te Ching'       ? QUICK_PROMPTS_TAO
+                : source === 'Torah'              ? QUICK_PROMPTS_TORAH
+                : source === 'Agamas'             ? QUICK_PROMPTS_JAIN
+                : source === 'Analects'           ? QUICK_PROMPTS_CONFUCIUS
+                : source === 'Kitab-i-Aqdas'      ? QUICK_PROMPTS_BAHAI
                 : QUICK_PROMPTS_GITA;
   el.innerHTML = prompts.map(p =>
     `<div class="chip" data-prompt="${p}">${p}</div>`

@@ -307,9 +307,15 @@ export function showConfirm(message = 'This cannot be undone.', title = 'Are you
 
 // ─── Religion symbols ───
 export function getSymbol(source) {
-  if (source === 'Bible')            return '✝';
-  if (source === 'Quran')            return 'الله';
+  if (source === 'Bible')             return '✝';
+  if (source === 'Quran')             return 'الله';
   if (source === 'Guru Granth Sahib') return 'ੴ';
+  if (source === 'Dhammapada')        return '☸';
+  if (source === 'Tao Te Ching')      return '☯';
+  if (source === 'Torah')             return '✡';
+  if (source === 'Agamas')            return 'ॐ';
+  if (source === 'Analects')          return '仁';
+  if (source === 'Kitab-i-Aqdas')     return '✦';
   return '॥';
 }
 
@@ -319,6 +325,10 @@ function updateSymbols(source) {
 
   const verseWord = source === 'Quran'            ? 'Ayah'
                   : source === 'Guru Granth Sahib' ? 'Shabad'
+                  : source === 'Dhammapada'         ? 'Verse'
+                  : source === 'Tao Te Ching'       ? 'Chapter'
+                  : source === 'Analects'            ? 'Passage'
+                  : source === 'Kitab-i-Aqdas'       ? 'Verse'
                   : 'Verse';
   setEl('mini-tag', `Daily ${verseWord}`);
 }

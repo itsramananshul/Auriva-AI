@@ -1,13 +1,17 @@
 import { fetchRandomVerse } from './api.js';
-import { CHAPTER_NAMES, VERSE_COUNTS, BIBLE_BOOKS } from './config.js';
+import {
+  CHAPTER_NAMES, VERSE_COUNTS, BIBLE_BOOKS,
+  DHAMMAPADA_CHAPTERS, DHAMMAPADA_VERSE_COUNTS,
+  TAO_CHAPTERS, TORAH_BOOKS, JAIN_TEXTS,
+  ANALECTS_BOOKS, BAHAI_TEXTS
+} from './config.js';
 import { getProfile, setDailyVerse } from './app.js';
 
 let dailyVerse = null;
 let _verseLoading = false;
 
-function isBibleUser() {
-  return getProfile()?.source === 'Bible';
-}
+function isBibleUser()  { return getProfile()?.source === 'Bible'; }
+function isTorahUser()  { return getProfile()?.source === 'Torah'; }
 
 function verseRef(v) {
   if (v.ref) return v.ref;
@@ -57,12 +61,23 @@ export function showPage(name) {
   if (mobNav) mobNav.classList.add('active');
 
   // Update page title based on scripture
-  const bible = isBibleUser();
+  const source = getProfile()?.source || 'Bhagavad Gita';
+  const scriptureLabel =
+    source === 'Bible'             ? 'Bible'
+    : source === 'Quran'           ? 'Quran'
+    : source === 'Guru Granth Sahib'? 'Guru Granth Sahib'
+    : source === 'Dhammapada'      ? 'Dhammapada'
+    : source === 'Tao Te Ching'    ? 'Tao Te Ching'
+    : source === 'Torah'           ? 'Torah'
+    : source === 'Agamas'          ? 'Jain Agamas'
+    : source === 'Analects'        ? 'Analects'
+    : source === 'Kitab-i-Aqdas'   ? 'Bahá\'í Texts'
+    : 'Scriptures';
   const titles = {
-    seek:        `Seek <span>Wisdom</span>`,
-    daily:       `Daily <span>${bible ? 'Verse' : 'Verse'}</span>`,
-    scriptures:  `The <span>${bible ? 'Bible' : 'Scriptures'}</span>`,
-    saved:       `Saved <span>Verses</span>`
+    seek:       `Seek <span>Wisdom</span>`,
+    daily:      `Daily <span>Verse</span>`,
+    scriptures: `The <span>${scriptureLabel}</span>`,
+    saved:      `Saved <span>Verses</span>`
   };
   const ttl = document.getElementById('page-title');
   if (ttl) ttl.innerHTML = titles[name] || name;
@@ -108,19 +123,17 @@ export async function refreshDailyVerse() {
   }
 }
 
-// ─── Scriptures page — Gita chapters or Bible books ───
+// ─── Scriptures page ───
 function renderScriptures() {
   const grid = document.getElementById('sc-grid');
   if (!grid) return;
+  grid.innerHTML = ''; // re-render every time so switching profile works
 
-  // Re-render every time so switching profile works
-  grid.innerHTML = '';
+  const source = getProfile()?.source || 'Bhagavad Gita';
 
-  if (isBibleUser()) {
-    // Group by testament
+  if (source === 'Bible') {
     const oldBooks = BIBLE_BOOKS.filter(b => b.testament === 'Old');
     const newBooks = BIBLE_BOOKS.filter(b => b.testament === 'New');
-
     const makeSection = (label, books) => `
       <div class="sc-testament-label">${label} Testament</div>
       ${books.map(b => `
@@ -129,9 +142,64 @@ function renderScriptures() {
           <div class="sc-title">${b.name}</div>
           <div class="sc-count">${b.testament} Testament</div>
         </div>`).join('')}`;
-
     grid.innerHTML = makeSection('Old', oldBooks) + makeSection('New', newBooks);
+
+  } else if (source === 'Torah') {
+    grid.innerHTML = `<div class="sc-testament-label">Hebrew Bible</div>` +
+      TORAH_BOOKS.map(b => `
+        <div class="sc-card" data-book="${b.name}">
+          <div class="sc-ch">Book</div>
+          <div class="sc-title">${b.name}</div>
+          <div class="sc-count">${b.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Dhammapada') {
+    grid.innerHTML = DHAMMAPADA_CHAPTERS.map((name, i) => `
+      <div class="sc-card" data-chapter="${i+1}">
+        <div class="sc-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="sc-ch">Chapter ${i+1}</div>
+        <div class="sc-title">${name}</div>
+        <div class="sc-count">${DHAMMAPADA_VERSE_COUNTS[i]} verses</div>
+      </div>`).join('');
+
+  } else if (source === 'Tao Te Ching') {
+    grid.innerHTML = TAO_CHAPTERS.map((name, i) => `
+      <div class="sc-card" data-tao="${i+1}">
+        <div class="sc-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="sc-ch">Chapter ${i+1}</div>
+        <div class="sc-title">${name}</div>
+        <div class="sc-count">Tao Te Ching</div>
+      </div>`).join('');
+
+  } else if (source === 'Agamas') {
+    grid.innerHTML = `<div class="sc-testament-label">Sacred Jain Texts</div>` +
+      JAIN_TEXTS.map(t => `
+        <div class="sc-card" data-jain="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Analects') {
+    grid.innerHTML = ANALECTS_BOOKS.map((name, i) => `
+      <div class="sc-card" data-analects="${i+1}">
+        <div class="sc-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="sc-ch">Book ${i+1}</div>
+        <div class="sc-title">${name}</div>
+        <div class="sc-count">Analects of Confucius</div>
+      </div>`).join('');
+
+  } else if (source === 'Kitab-i-Aqdas') {
+    grid.innerHTML = `<div class="sc-testament-label">Sacred Bahá\'í Writings</div>` +
+      BAHAI_TEXTS.map(t => `
+        <div class="sc-card" data-bahai="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
   } else {
+    // Default: Bhagavad Gita (also for Shiva Purana, Devi Mahatmya, Ramayana — show Gita chapters as the core Hindu framework)
     grid.innerHTML = CHAPTER_NAMES.map((name, i) => `
       <div class="sc-card" data-chapter="${i+1}">
         <div class="sc-num">${String(i+1).padStart(2,'0')}</div>
@@ -146,12 +214,24 @@ function renderScriptures() {
       showPage('seek');
       const input = document.getElementById('user-input');
       if (!input) return;
+
       if (card.dataset.book) {
         input.value = `Tell me about the Book of ${card.dataset.book} and its key teachings`;
-      } else {
+      } else if (card.dataset.chapter) {
         const ch = card.dataset.chapter;
         input.value = `Tell me about Chapter ${ch}: ${CHAPTER_NAMES[ch-1]}`;
+      } else if (card.dataset.tao) {
+        const ch = card.dataset.tao;
+        input.value = `Tell me about Chapter ${ch} of the Tao Te Ching: ${TAO_CHAPTERS[ch-1]}`;
+      } else if (card.dataset.jain) {
+        input.value = `Tell me about the ${card.dataset.jain} and its key teachings`;
+      } else if (card.dataset.analects) {
+        const b = card.dataset.analects;
+        input.value = `Tell me about Book ${b} of the Analects: ${ANALECTS_BOOKS[b-1]}`;
+      } else if (card.dataset.bahai) {
+        input.value = `Tell me about the ${card.dataset.bahai} and its key teachings`;
       }
+
       document.getElementById('send-btn')?.click();
     });
   });

@@ -22,25 +22,23 @@ const BIBLE_IDS = {
 };
 
 export default async function handler(req, res) {
-  const seed     = req.query.seed   || Math.random();
-  const source   = req.query.source || 'Bhagavad Gita';
-  const isBible = source === 'Bible';
-  const isQuran = source === 'Quran';
-  const isSikh  = source === 'Guru Granth Sahib';
+  const seed   = req.query.seed   || Math.random();
+  const source = req.query.source || 'Bhagavad Gita';
 
-  // Tier 1: Real API
+  // Tier 1: Real scripture API (where available)
   try {
     let verse;
-    if (isSikh)       verse = await getSikhVerse();
-    else if (isQuran) verse = await getQuranVerse();
-    else if (isBible) verse = await getBibleVerse(seed);
-    else              verse = await getGitaVerse();
+    if (source === 'Guru Granth Sahib') verse = await getSikhVerse();
+    else if (source === 'Quran')        verse = await getQuranVerse();
+    else if (source === 'Bible')        verse = await getBibleVerse(seed);
+    else if (source === 'Bhagavad Gita')verse = await getGitaVerse();
+    else                                throw new Error('No Tier 1 API for this source');
     return res.status(200).json(verse);
   } catch (err) {
-    console.error('[daily-verse] Real API failed:', err.message);
+    console.error('[daily-verse] Tier 1 failed:', err.message);
   }
 
-  // Tier 2: Gemini AI generation
+  // Tier 2: Gemini AI generation (handles all sources including new religions)
   try {
     const verse = await getGeminiVerse(source, seed);
     return res.status(200).json(verse);
@@ -49,10 +47,7 @@ export default async function handler(req, res) {
   }
 
   // Tier 3: Hardcoded fallback — always works
-  if (isSikh)       return res.status(200).json(sikhFallback());
-  else if (isQuran) return res.status(200).json(quranFallback());
-  else if (isBible) return res.status(200).json(bibleFallback());
-  else              return res.status(200).json(gitaFallback());
+  return res.status(200).json(getHardcodedFallback(source));
 }
 
 // ─── Guru Granth Sahib — api.gurbaninow.com (free, no API key) ───
@@ -64,7 +59,6 @@ async function getSikhVerse() {
   const lines = data.shabad;
   if (!lines?.length) throw new Error('No lines in shabad');
 
-  // Pick a random line that has both Gurmukhi and English translation
   const valid = lines.filter(l =>
     l.line?.gurmukhi?.unicode?.trim() &&
     l.line?.translation?.english?.default?.trim()
@@ -78,7 +72,7 @@ async function getSikhVerse() {
     ref:         `Guru Granth Sahib${page ? `, Ang ${page}` : ''}`,
     chapter:     page || 1,
     verse:       1,
-    sanskrit:    line.gurmukhi.unicode,   // Gurmukhi stored in sanskrit field
+    sanskrit:    line.gurmukhi.unicode,
     translation: line.translation.english.default
   };
 }
@@ -97,14 +91,14 @@ async function getQuranVerse() {
 
   if (data.code !== 200 || !data.data?.length) throw new Error('Invalid Quran API response');
 
-  const arabic  = data.data[0]; // quran-uthmani edition
-  const english = data.data[1]; // en.sahih edition
+  const arabic  = data.data[0];
+  const english = data.data[1];
 
   return {
     ref:         `Surah ${arabic.surah.englishName} ${surah}:${ayah}`,
     chapter:     surah,
     verse:       ayah,
-    sanskrit:    arabic.text,   // Arabic text stored in sanskrit field (same UI slot)
+    sanskrit:    arabic.text,
     translation: english.text
   };
 }
@@ -119,7 +113,6 @@ async function getGitaVerse() {
   if (!res.ok) throw new Error(`Gita API ${res.status}`);
   const data = await res.json();
 
-  // Pick best available English translation — skip "did not comment" placeholders
   const isValid = t => t && !t.toLowerCase().includes('did not comment') && t.trim().length > 10;
   const translation =
     (isValid(data.purohit?.et) ? data.purohit.et : null) ||
@@ -139,12 +132,11 @@ async function getGitaVerse() {
   };
 }
 
-// ─── Bible — API.Bible (NIV) ───
+// ─── Bible — API.Bible ───
 async function getBibleVerse(seed) {
   const API_KEY = process.env.BIBLE_API_KEY;
   if (!API_KEY) throw new Error('BIBLE_API_KEY not set');
 
-  // Step 1: Ask Gemini to pick a random verse reference
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const prompt = `Pick a random Bible verse. Seed for randomness: ${seed}.
 Spread across all 66 books — Old and New Testament. Not always the famous ones.
@@ -164,9 +156,8 @@ Respond with ONLY valid JSON, no markdown:
   refText = refText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
   const ref = JSON.parse(refText);
 
-  // Step 2: Fetch exact verse text from API.Bible (try NIV first, fallback to KJV)
-  const verseId  = `${ref.bookId}.${ref.chapter}.${ref.verse}`;
-  const params   = new URLSearchParams({
+  const verseId = `${ref.bookId}.${ref.chapter}.${ref.verse}`;
+  const params  = new URLSearchParams({
     'content-type': 'text',
     'include-notes': 'false',
     'include-titles': 'false',
@@ -198,22 +189,39 @@ Respond with ONLY valid JSON, no markdown:
   };
 }
 
-// ─── Tier 2: Gemini AI fallback (when real APIs fail) ───
+// ─── Tier 2: Gemini AI generation (handles ALL sources) ───
 async function getGeminiVerse(source, seed) {
-  const isSikh  = source === 'Guru Granth Sahib';
-  const isQuran = source === 'Quran';
-  const isBible = source === 'Bible';
-  const prompt = isSikh
-    ? `Return a random line from the Guru Granth Sahib as JSON. Seed: ${seed}. ONLY JSON, no markdown:
-{"ref":"Guru Granth Sahib, Ang <pageNumber>","chapter":<pageNumber>,"verse":1,"sanskrit":"<Gurmukhi unicode text>","translation":"<English meaning>"}`
-    : isQuran
-    ? `Return a random Quran ayah as JSON. Seed: ${seed}. ONLY JSON, no markdown:
-{"ref":"Surah <EnglishName> <surahNumber>:<ayahNumber>","chapter":<surahNum>,"verse":<ayahNum>,"sanskrit":"<Arabic text>","translation":"<English meaning>"}`
-    : isBible
-    ? `Return a random Bible verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
-{"ref":"<Book Chapter:Verse>","chapter":<n>,"verse":<n>,"sanskrit":"","translation":"<exact verse text>"}`
-    : `Return a random Bhagavad Gita verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:
-{"chapter":<n>,"verse":<n>,"sanskrit":"<Devanagari>","translation":"<English meaning>"}`;
+  const prompts = {
+    'Shiva Purana':
+      `Return a meaningful verse or teaching from the Shiva Purana as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Shiva Purana, <section/chapter>","chapter":1,"verse":1,"sanskrit":"<Sanskrit Devanagari verse if applicable, else empty string>","translation":"<English meaning>"}`,
+    'Devi Mahatmya':
+      `Return a meaningful verse from the Devi Mahatmya (Durga Saptashati) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Devi Mahatmya, Chapter <n>:<verse>","chapter":<n>,"verse":<n>,"sanskrit":"<Sanskrit Devanagari>","translation":"<English meaning>"}`,
+    'Ramayana':
+      `Return a meaningful verse or teaching from the Ramayana (Valmiki or Tulsidas) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Ramayana, <Kanda> <chapter>:<verse>","chapter":1,"verse":1,"sanskrit":"<Sanskrit or Awadhi verse>","translation":"<English meaning>"}`,
+    'Dhammapada':
+      `Return a random verse from the Dhammapada (Buddhist scripture) as JSON. Seed: ${seed}. Spread across all 26 chapters. ONLY JSON, no markdown:\n{"ref":"Dhammapada <chapter>:<verse>","chapter":<n>,"verse":<n>,"sanskrit":"<Pali original>","translation":"<English meaning>"}`,
+    'Tao Te Ching':
+      `Return a passage from the Tao Te Ching by Laozi as JSON. Seed: ${seed}. Spread across all 81 chapters. ONLY JSON, no markdown:\n{"ref":"Tao Te Ching, Chapter <n>","chapter":<n>,"verse":1,"sanskrit":"<Classical Chinese text>","translation":"<English rendering>"}`,
+    'Torah':
+      `Return a meaningful verse from the Hebrew Bible / Torah (include Psalms, Proverbs, Isaiah, Job, etc.) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Book Chapter:Verse>","chapter":<n>,"verse":<n>,"sanskrit":"","translation":"<English verse text>"}`,
+    'Agamas':
+      `Return a meaningful teaching or verse from the Jain Agamas (Acaranga Sutra, Uttaradhyayana Sutra, Tattvartha Sutra, etc.) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Text name>, <chapter if applicable>","chapter":1,"verse":1,"sanskrit":"<Prakrit or Sanskrit original if available, else empty string>","translation":"<English meaning>"}`,
+    'Analects':
+      `Return a meaningful passage from the Analects of Confucius as JSON. Seed: ${seed}. Spread across all 20 books. ONLY JSON, no markdown:\n{"ref":"Analects <book>:<chapter>","chapter":<book>,"verse":<chapter>,"sanskrit":"<Classical Chinese>","translation":"<English rendering>"}`,
+    'Kitab-i-Aqdas':
+      `Return a meaningful verse or passage from the writings of Bahá'u'lláh (Kitáb-i-Aqdas, Hidden Words, Gleanings, etc.) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Text name>, verse/paragraph <n>","chapter":1,"verse":1,"sanskrit":"","translation":"<English text>"}`
+  };
+
+  // Default Gemini prompt (covers Quran, Bible, Sikh, Gita if somehow they reach here)
+  const prompt = prompts[source] ||
+    (source === 'Guru Granth Sahib'
+      ? `Return a random line from the Guru Granth Sahib as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Guru Granth Sahib, Ang <pageNumber>","chapter":<pageNumber>,"verse":1,"sanskrit":"<Gurmukhi unicode text>","translation":"<English meaning>"}`
+      : source === 'Quran'
+      ? `Return a random Quran ayah as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Surah <EnglishName> <surahNumber>:<ayahNumber>","chapter":<surahNum>,"verse":<ayahNum>,"sanskrit":"<Arabic text>","translation":"<English meaning>"}`
+      : source === 'Bible'
+      ? `Return a random Bible verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Book Chapter:Verse>","chapter":<n>,"verse":<n>,"sanskrit":"","translation":"<exact verse text>"}`
+      : `Return a random Bhagavad Gita verse as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"chapter":<n>,"verse":<n>,"sanskrit":"<Devanagari>","translation":"<English meaning>"}`
+    );
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const res = await fetch(url, {
@@ -232,45 +240,69 @@ async function getGeminiVerse(source, seed) {
   return verse;
 }
 
-// ─── Tier 3: Hardcoded fallbacks (always works, no network needed) ───
-function sikhFallback() {
-  const options = [
-    { ref: 'Guru Granth Sahib, Ang 1',   chapter: 1,   verse: 1, sanskrit: 'ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ', translation: 'One Universal Creator God. The Name Is Truth. Creative Being Personified. No Fear. No Hatred.' },
-    { ref: 'Guru Granth Sahib, Ang 2',   chapter: 2,   verse: 1, sanskrit: 'ਸੋਚੈ ਸੋਚਿ ਨ ਹੋਵਈ ਜੇ ਸੋਚੀ ਲਖ ਵਾਰ', translation: 'By thinking, He cannot be reduced to thought, even by thinking hundreds of thousands of times.' },
-    { ref: 'Guru Granth Sahib, Ang 349', chapter: 349, verse: 1, sanskrit: 'ਭੈ ਕਾਹੂ ਕਉ ਦੇਤ ਨਹਿ ਨਹਿ ਭੈ ਮਾਨਤ ਆਨ', translation: 'One who does not frighten anyone, and who is not afraid of anyone — that person is called a true devotee of God.' },
-    { ref: 'Guru Granth Sahib, Ang 724', chapter: 724, verse: 1, sanskrit: 'ਜਿਉ ਜਿਉ ਚਲਹਿ ਠਾਕੁਰ ਕੀ ਵਾਟ', translation: 'Walk the path of your Lord and Master, step by step.' },
-    { ref: 'Guru Granth Sahib, Ang 278', chapter: 278, verse: 1, sanskrit: 'ਤੂ ਠਾਕੁਰੁ ਤੁਮ ਪਹਿ ਅਰਦਾਸਿ', translation: 'You are my Lord and Master; to You, I offer this prayer.' },
-  ];
-  return options[Math.floor(Math.random() * options.length)];
-}
+// ─── Tier 3: Hardcoded fallbacks (always work, no network) ───
+function getHardcodedFallback(source) {
+  const fallbacks = {
+    'Guru Granth Sahib': [
+      { ref: 'Guru Granth Sahib, Ang 1',   chapter: 1,   verse: 1, sanskrit: 'ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ', translation: 'One Universal Creator God. The Name Is Truth. Creative Being Personified. No Fear. No Hatred.' },
+      { ref: 'Guru Granth Sahib, Ang 2',   chapter: 2,   verse: 1, sanskrit: 'ਸੋਚੈ ਸੋਚਿ ਨ ਹੋਵਈ ਜੇ ਸੋਚੀ ਲਖ ਵਾਰ', translation: 'By thinking, He cannot be reduced to thought, even by thinking hundreds of thousands of times.' },
+      { ref: 'Guru Granth Sahib, Ang 349', chapter: 349, verse: 1, sanskrit: 'ਭੈ ਕਾਹੂ ਕਉ ਦੇਤ ਨਹਿ ਨਹਿ ਭੈ ਮਾਨਤ ਆਨ', translation: 'One who does not frighten anyone, and who is not afraid of anyone — that person is called a true devotee of God.' },
+    ],
+    'Quran': [
+      { ref: 'Surah Al-Baqarah 2:286', chapter: 2,  verse: 286, sanskrit: 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا', translation: 'Allah does not burden a soul beyond that it can bear.' },
+      { ref: 'Surah Ash-Sharh 94:5',   chapter: 94, verse: 5,   sanskrit: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا',                translation: 'For indeed, with hardship will be ease.' },
+      { ref: 'Surah Az-Zumar 39:53',   chapter: 39, verse: 53,  sanskrit: 'إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا',    translation: 'Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.' },
+    ],
+    'Bible': [
+      { ref: 'Philippians 4:13', chapter: 4,  verse: 13, sanskrit: '', translation: 'I can do all things through Christ who strengthens me.' },
+      { ref: 'Jeremiah 29:11',   chapter: 29, verse: 11, sanskrit: '', translation: 'For I know the plans I have for you, declares the Lord — plans to prosper you and not to harm you, plans to give you hope and a future.' },
+      { ref: 'Isaiah 40:31',     chapter: 40, verse: 31, sanskrit: '', translation: 'But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary.' },
+    ],
+    'Dhammapada': [
+      { ref: 'Dhammapada 1:1', chapter: 1, verse: 1, sanskrit: 'Mano pubbaṅgamā dhammā, manoseṭṭhā manomayā.', translation: 'Mind is the forerunner of all actions. All deeds are led by mind, created by mind.' },
+      { ref: 'Dhammapada 1:2', chapter: 1, verse: 2, sanskrit: 'Manasā ce paduṭṭhena bhāsati vā karoti vā, tato naṃ dukkhamanveti.', translation: 'If one speaks or acts with a corrupt mind, suffering follows, as the wheel follows the hoof of an ox.' },
+      { ref: 'Dhammapada 5:1', chapter: 5, verse: 60, sanskrit: 'Dīghā jāgarato ratti, dīghaṃ santassa yojanaṃ.', translation: 'Long is the night to the wakeful; long is the road to the weary; long is the round of rebirth to the foolish who know not the true teaching.' },
+      { ref: 'Dhammapada 20:4', chapter: 20, verse: 276, sanskrit: 'Tumhehi kiccamātappaṃ, akkhātāro Tathāgatā.', translation: 'You yourself must make the effort. The Buddhas only show the way.' },
+    ],
+    'Tao Te Ching': [
+      { ref: 'Tao Te Ching, Chapter 1',  chapter: 1,  verse: 1, sanskrit: '道可道，非常道。名可名，非常名。', translation: 'The Tao that can be told is not the eternal Tao. The name that can be named is not the eternal name.' },
+      { ref: 'Tao Te Ching, Chapter 8',  chapter: 8,  verse: 1, sanskrit: '上善若水。水善利萬物而不爭。', translation: 'The highest good is like water. Water benefits all things and does not compete.' },
+      { ref: 'Tao Te Ching, Chapter 16', chapter: 16, verse: 1, sanskrit: '致虛極，守靜篤。萬物並作，吾以觀復。', translation: 'Achieve emptiness to the utmost. Hold stillness with full sincerity. The ten thousand things rise and fall — I watch their return.' },
+      { ref: 'Tao Te Ching, Chapter 33', chapter: 33, verse: 1, sanskrit: '知人者智，自知者明。勝人者有力，自勝者強。', translation: 'Knowing others is wisdom. Knowing yourself is enlightenment. Overcoming others takes force. Overcoming yourself takes true strength.' },
+    ],
+    'Torah': [
+      { ref: 'Psalms 23:1',      chapter: 23, verse: 1,  sanskrit: '', translation: 'The Lord is my shepherd; I shall not want.' },
+      { ref: 'Proverbs 3:5-6',   chapter: 3,  verse: 5,  sanskrit: '', translation: 'Trust in the Lord with all your heart and lean not on your own understanding. In all your ways acknowledge Him, and He will make your paths straight.' },
+      { ref: 'Isaiah 40:31',     chapter: 40, verse: 31, sanskrit: '', translation: 'Those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary.' },
+      { ref: 'Deuteronomy 31:6', chapter: 31, verse: 6,  sanskrit: '', translation: 'Be strong and courageous. Do not be afraid or terrified, for the Lord your God goes with you; He will never leave you nor forsake you.' },
+    ],
+    'Agamas': [
+      { ref: 'Uttaradhyayana Sutra 1:13', chapter: 1, verse: 13, sanskrit: '', translation: 'A man is not noble who injures living beings; he is called noble who is kind to all living beings.' },
+      { ref: 'Acaranga Sutra 1.4.1',      chapter: 1, verse: 1,  sanskrit: '', translation: 'All living beings desire to live. No one wants to die. Therefore, do not take any life out of cruelty.' },
+      { ref: 'Tattvartha Sutra 5.21',     chapter: 5, verse: 21, sanskrit: '', translation: 'Parasparopagraho jīvānām — souls render service to one another.' },
+      { ref: 'Uttaradhyayana Sutra 28',   chapter: 28, verse: 1, sanskrit: '', translation: 'The soul is the maker and the non-maker, and itself makes happiness and misery.' },
+    ],
+    'Analects': [
+      { ref: 'Analects 1:1',  chapter: 1, verse: 1,  sanskrit: '學而時習之，不亦說乎？', translation: 'Is it not pleasant to learn with a constant perseverance and application? Is it not delightful to have friends coming from distant quarters?' },
+      { ref: 'Analects 4:5',  chapter: 4, verse: 5,  sanskrit: '富與貴，是人之所欲也；不以其道得之，不處也。', translation: 'Riches and honours are what people desire. But if they cannot be obtained in the right way, they should not be held.' },
+      { ref: 'Analects 15:24',chapter: 15, verse: 24, sanskrit: '己所不欲，勿施於人。', translation: 'What you do not want done to yourself, do not do to others.' },
+      { ref: 'Analects 2:4',  chapter: 2, verse: 4,  sanskrit: '吾日三省吾身。', translation: 'I daily examine myself on three points: whether I have been faithful in doing for others; whether I have been sincere with friends; whether I have mastered and practised what I was taught.' },
+    ],
+    'Kitab-i-Aqdas': [
+      { ref: 'Hidden Words, Arabic 2',   chapter: 1, verse: 1, sanskrit: '', translation: 'O Son of Spirit! The best beloved of all things in My sight is Justice. Turn not away therefrom if thou desirest Me, and neglect it not that I may confide in thee.' },
+      { ref: 'Hidden Words, Persian 32', chapter: 1, verse: 2, sanskrit: '', translation: 'O Son of the Supreme! I have made death a messenger of joy to thee. Wherefore dost thou grieve? I made the light to shed on thee its splendour. Why dost thou veil thyself therefrom?' },
+      { ref: 'Gleanings, CLIII',         chapter: 2, verse: 1, sanskrit: '', translation: 'Be generous in prosperity, and thankful in adversity. Be worthy of the trust of thy neighbor, and look upon him with a bright and friendly face.' },
+      { ref: 'Kitáb-i-Aqdas, verse 2',  chapter: 1, verse: 3, sanskrit: '', translation: 'The first duty prescribed by God for His servants is the recognition of Him Who is the Dayspring of His Revelation and the Fountain of His laws.' },
+    ],
+  };
 
-function quranFallback() {
-  const options = [
-    { ref: 'Surah Al-Baqarah 2:286', chapter: 2, verse: 286, sanskrit: 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا', translation: 'Allah does not burden a soul beyond that it can bear.' },
-    { ref: 'Surah Ash-Sharh 94:5',   chapter: 94, verse: 5,  sanskrit: 'فَإِنَّ مَعَ الْعُسْرِ يُسْرًا', translation: 'For indeed, with hardship will be ease.' },
-    { ref: 'Surah Az-Zumar 39:53',   chapter: 39, verse: 53, sanskrit: 'إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا', translation: 'Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.' },
-    { ref: 'Surah Al-Imran 3:139',   chapter: 3,  verse: 139, sanskrit: 'وَلَا تَهِنُوا وَلَا تَحْزَنُوا وَأَنتُمُ الْأَعْلَوْنَ', translation: 'Do not weaken and do not grieve, for you will be superior if you are true believers.' },
-    { ref: 'Surah At-Talaq 65:3',    chapter: 65, verse: 3,  sanskrit: 'وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ', translation: 'And whoever relies upon Allah — then He is sufficient for him.' },
-  ];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function gitaFallback() {
-  const options = [
+  // Hindu sources that don't have specific Tier 1 APIs — use Gita fallbacks
+  const gitaFallbacks = [
     { chapter: 2, verse: 47, sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥', translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.' },
-    { chapter: 6, verse: 5,  sanskrit: 'उद्धरेदात्मनात्मानं नात्मानमवसादयेत्।\nआत्मैव ह्यात्मनो बन्धुरात्मैव रिपुरात्मनः॥', translation: 'Elevate yourself through your own mind, not degrade yourself. The mind is your best friend and your worst enemy.' },
-    { chapter: 9, verse: 22, sanskrit: 'अनन्याश्चिन्तयन्तो मां ये जनाः पर्युपासते।\nतेषां नित्याभियुक्तानां योगक्षेमं वहाम्यहम्॥', translation: 'For those who worship Me with devotion, meditating on My form, I carry what they lack and preserve what they have.' },
+    { chapter: 6, verse: 5,  sanskrit: 'उद्धरेदात्मनात्मानं नात्मानमवसादयेत्।', translation: 'Elevate yourself through the power of your mind, and do not degrade yourself. The mind is your best friend and your worst enemy.' },
+    { chapter: 9, verse: 22, sanskrit: 'अनन्याश्चिन्तयन्तो मां ये जनाः पर्युपासते।', translation: 'For those who worship Me with devotion, meditating on My form, I carry what they lack and preserve what they have.' },
   ];
-  return options[Math.floor(Math.random() * options.length)];
-}
 
-function bibleFallback() {
-  const options = [
-    { ref: 'Philippians 4:13', chapter: 4, verse: 13, sanskrit: '', translation: 'I can do all things through Christ who strengthens me.' },
-    { ref: 'Jeremiah 29:11',   chapter: 29, verse: 11, sanskrit: '', translation: 'For I know the plans I have for you, declares the Lord — plans to prosper you and not to harm you, plans to give you hope and a future.' },
-    { ref: 'Romans 8:28',      chapter: 8,  verse: 28, sanskrit: '', translation: 'And we know that in all things God works for the good of those who love Him, who have been called according to His purpose.' },
-    { ref: 'Isaiah 40:31',     chapter: 40, verse: 31, sanskrit: '', translation: 'But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary.' },
-    { ref: 'Psalm 23:1',       chapter: 23, verse: 1,  sanskrit: '', translation: 'The Lord is my shepherd; I shall not want.' },
-  ];
+  const options = fallbacks[source] || gitaFallbacks;
   return options[Math.floor(Math.random() * options.length)];
 }

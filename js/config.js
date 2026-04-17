@@ -104,3 +104,140 @@ export const QUICK_PROMPTS_SIKH = [
   "I feel unmotivated",
   "How to find my purpose?"
 ];
+
+// ─── Buddhism ───
+export const DHAMMAPADA_CHAPTERS = [
+  'The Twin Verses',    'On Heedfulness',       'The Mind',
+  'Flowers',            'The Fool',              'The Wise',
+  'The Venerable',      'The Thousands',         'Evil',
+  'Violence',           'Old Age',               'The Self',
+  'The World',          'The Buddha',            'Happiness',
+  'The Beloved',        'Anger',                 'Impurity',
+  'The Just',           'The Path',              'Miscellaneous',
+  'Hell',               'The Elephant',          'Craving',
+  'The Monk',           'The Brahmin'
+];
+
+export const DHAMMAPADA_VERSE_COUNTS = [20,12,12,17,17,14,10,16,13,17,11,16,16,18,26,12,14,21,17,17,17,14,16,26,23,41];
+
+export const QUICK_PROMPTS_BUDDHA = [
+  "I feel lost in life",
+  "How do I let go of suffering?",
+  "I'm too attached to outcomes",
+  "What did the Buddha say about anger?",
+  "I feel unmotivated",
+  "How to find inner peace?"
+];
+
+// ─── Taoism ───
+export const TAO_CHAPTERS = Array.from({ length: 81 }, (_, i) => {
+  const names = {
+    1: 'The Tao That Can Be Named', 2: 'The Relativity of Opposites',
+    4: 'The Inexhaustible Tao',     8: 'The Highest Good',
+    11: 'The Uses of Emptiness',    16: 'Returning to the Root',
+    22: 'Yielding and Overcoming',  33: 'Knowing Oneself',
+    44: 'Fame and Self',            55: 'The Virtue of a Child',
+    66: 'Leading by Following',     76: 'The Living and the Dead',
+    81: 'The Way of the Sage'
+  };
+  return names[i + 1] || `Chapter ${i + 1}`;
+});
+
+export const QUICK_PROMPTS_TAO = [
+  "I'm struggling to let go",
+  "How do I stop forcing things?",
+  "I feel resistance inside me",
+  "What does Laozi say about the ego?",
+  "I feel lost in life",
+  "How to find my purpose?"
+];
+
+// ─── Judaism / Torah ───
+export const TORAH_BOOKS = [
+  { name: 'Genesis',      desc: 'Creation & Covenant' },
+  { name: 'Exodus',       desc: 'Liberation & the Law' },
+  { name: 'Leviticus',    desc: 'Holiness & Sacrifice' },
+  { name: 'Numbers',      desc: 'Wilderness & Faith' },
+  { name: 'Deuteronomy',  desc: 'Covenant Renewed' },
+  { name: 'Joshua',       desc: 'Entering the Promise' },
+  { name: 'Psalms',       desc: 'Prayer & Praise' },
+  { name: 'Proverbs',     desc: 'Wisdom & Virtue' },
+  { name: 'Isaiah',       desc: 'Prophecy & Hope' },
+  { name: 'Job',          desc: 'Suffering & Faith' },
+  { name: 'Ecclesiastes', desc: 'Meaning & Impermanence' },
+  { name: 'Song of Songs',desc: 'Love & Devotion' },
+];
+
+export const QUICK_PROMPTS_TORAH = [
+  "I feel lost in life",
+  "How do I deal with hardship?",
+  "I'm scared of the future",
+  "What does the Torah say about anger?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Jainism ───
+export const JAIN_TEXTS = [
+  { name: 'Acaranga Sutra',         desc: 'Lord Mahavira\'s conduct & non-violence' },
+  { name: 'Sutrakritanga',          desc: 'Refuting wrong paths, embracing truth' },
+  { name: 'Uttaradhyayana Sutra',   desc: 'Mahavira\'s final discourses' },
+  { name: 'Dasavaikalika Sutra',    desc: 'Conduct of ascetics' },
+  { name: 'Tattvartha Sutra',       desc: 'Systematic philosophy of liberation' },
+  { name: 'Kalpa Sutra',            desc: 'Lives of the Tirthankaras' },
+  { name: 'Samayasara',             desc: 'The Essence of the Self' },
+  { name: 'Niyamasara',             desc: 'The Essence of Discipline' },
+];
+
+export const QUICK_PROMPTS_JAIN = [
+  "I feel lost in life",
+  "How do I let go of attachment?",
+  "I'm struggling with anger",
+  "What did Mahavira say about the soul?",
+  "I feel unmotivated",
+  "How to find inner peace?"
+];
+
+// ─── Confucianism ───
+export const ANALECTS_BOOKS = [
+  'Xue Er — Learning',                'Wei Zheng — Governance',
+  'Ba Yi — Ritual',                   'Li Ren — Goodness',
+  'Gong Ye Chang — Judging People',   'Yong Ye — Virtue in Action',
+  'Shu Er — The Master\'s Way',       'Tai Bo — Selfless Rule',
+  'Zi Han — Rarity of Virtue',        'Xiang Dang — Ritual Conduct',
+  'Xian Jin — Disciples',             'Yan Yuan — On Humanity',
+  'Zi Lu — On Strength',              'Xian Wen — On Shame',
+  'Wei Ling Gong — On Consistency',   'Ji Shi — On Leadership',
+  'Yang Huo — Human Nature',          'Wei Zi — Noble Hermits',
+  'Zi Zhang — On Learning',           'Yao Yue — The Sage Kings'
+];
+
+export const QUICK_PROMPTS_CONFUCIUS = [
+  "I feel lost in life",
+  "How do I become a better person?",
+  "I'm struggling with my relationships",
+  "What did Confucius say about virtue?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Bahá'í ───
+export const BAHAI_TEXTS = [
+  { name: 'Kitáb-i-Aqdas',              desc: 'The Most Holy Book — Laws & Principles' },
+  { name: 'Kitáb-i-Íqán',               desc: 'The Book of Certitude — Faith & Knowledge' },
+  { name: 'Hidden Words',               desc: 'Gems of divine wisdom in brief form' },
+  { name: 'Seven Valleys',              desc: 'The mystical journey of the soul' },
+  { name: 'Gleanings',                  desc: 'Selections from the writings of Bahá\'u\'lláh' },
+  { name: 'Prayers and Meditations',    desc: 'Sacred prayers for every occasion' },
+  { name: 'Gems of Divine Mysteries',   desc: 'On the station of the Manifestation' },
+  { name: 'Tablet of Ahmad',            desc: 'A prayer of steadfastness and faith' },
+];
+
+export const QUICK_PROMPTS_BAHAI = [
+  "I feel lost in life",
+  "How do I deal with hardship?",
+  "I'm scared of the future",
+  "What does Bahá'u'lláh say about unity?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
