@@ -65,8 +65,9 @@
   border: 0.5px solid var(--border);
   background: var(--surface);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Cormorant Garamond', serif;
   font-size: 13px; color: var(--gold);
+  /* Arabic (الله) and Gurmukhi (ੴ) need system fonts to render correctly */
+  font-family: 'Cormorant Garamond', 'Noto Sans Arabic', 'Noto Sans Gurmukhi', serif;
 }
 .msg-bubble {
   max-width: 78%; padding: 10px 14px;

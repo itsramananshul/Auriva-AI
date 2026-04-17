@@ -81,6 +81,7 @@ async function initApp(user, profile) {
   setEl('sidebar-deity', profile.deity || '—');
   setEl('sidebar-source', `${profile.source || 'Bhagavad Gita'} · ${profile.language || 'English'}`);
   setEl('streak-txt', calcStreak(user.id));
+  updateSymbols(profile.source);
 
   // Init modules
   initNavigation();
@@ -242,6 +243,7 @@ function initProfileEdit(user) {
       _profile = { ..._profile, full_name: name, deity, source, language: lang };
 
       overlay.classList.remove('open');
+      updateSymbols(source);
 
       // Refresh quick chips to match new scripture
       const { renderQuickChips } = await import('./chat.js');
@@ -283,6 +285,24 @@ export function showConfirm(message = 'This cannot be undone.', title = 'Are you
     cancelBtn.addEventListener('click', onCancel);
     overlay.addEventListener('click', onOverlay);
   });
+}
+
+// ─── Religion symbols ───
+export function getSymbol(source) {
+  if (source === 'Bible')            return '✝';
+  if (source === 'Quran')            return 'الله';
+  if (source === 'Guru Granth Sahib') return 'ੴ';
+  return '॥';
+}
+
+function updateSymbols(source) {
+  const sym = getSymbol(source);
+  setEl('logo-sym', `${sym} Auriva AI`);
+
+  const verseWord = source === 'Quran'            ? 'Ayah'
+                  : source === 'Guru Granth Sahib' ? 'Shabad'
+                  : 'Verse';
+  setEl('mini-tag', `Daily ${verseWord}`);
 }
 
 // ─── Streak ───

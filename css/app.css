@@ -18,7 +18,7 @@ html, body { overflow: hidden; }
 }
 
 .logo .sym {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Sans Arabic', 'Noto Sans Gurmukhi', serif;
   font-size: 26px; color: var(--gold);
   font-weight: 300; letter-spacing: 2px;
 }

@@ -1,6 +1,6 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH } from './config.js';
-import { getProfile, getDailyVerse, showConfirm, sb } from './app.js';
+import { getProfile, getDailyVerse, showConfirm, sb, getSymbol } from './app.js';
 
 // ─── Markdown renderer ───
 function renderMarkdown(text) {
@@ -766,7 +766,8 @@ function createStreamBubble() {
   const container = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = 'msg ai';
-  div.innerHTML = `<div class="msg-av">॥</div><div class="msg-bubble"><span class="stream-cursor">▍</span></div>`;
+  const sym = getSymbol(getProfile()?.source);
+  div.innerHTML = `<div class="msg-av">${sym}</div><div class="msg-bubble"><span class="stream-cursor">▍</span></div>`;
   container.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return div.querySelector('.msg-bubble');
@@ -809,7 +810,7 @@ export function appendMsg(role, content, verse = null, persist = true) {
   // Avatar
   const avDiv = document.createElement('div');
   avDiv.className = 'msg-av';
-  avDiv.textContent = isUser ? initial : '॥';
+  avDiv.textContent = isUser ? initial : getSymbol(profile?.source);
 
   // Bubble
   const bubbleDiv = document.createElement('div');
