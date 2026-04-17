@@ -88,10 +88,31 @@ function initVoiceMode() {
     else enterVoiceMode();
   });
   endBtn?.addEventListener('click', exitVoiceMode);
+
+  // iOS only: tap the orb to interrupt while AI is speaking
+  // (SpeechRecognition is killed by iOS during TTS, so voice interruption isn't possible)
+  document.getElementById('vm-orb')?.addEventListener('click', () => {
+    if (_isIOS && _vmState === 'speaking') {
+      window.speechSynthesis.cancel();
+      clearInterval(_vmKeepAlive);
+      _vmText = '';
+      setVMTranscript('');
+      setVMState('listening');
+      startVMListening();
+    }
+  });
 }
 
 function enterVoiceMode() {
   _vmActive = true;
+
+  // iOS blocks speechSynthesis.speak() from async contexts.
+  // Unlock the audio system NOW while we're inside a user gesture (button click).
+  if (_isIOS) {
+    const unlock = new SpeechSynthesisUtterance(' ');
+    unlock.volume = 0.01;
+    window.speechSynthesis.speak(unlock);
+  }
 
   document.getElementById('vm-panel')?.classList.add('active');
   document.querySelector('#page-seek .input-area').style.display = 'none';
@@ -392,11 +413,11 @@ function setVMState(state) {
   const orb   = document.getElementById('vm-orb');
   const label = document.getElementById('vm-label');
   if (!orb) return;
-  orb.className    = `vm-orb ${state}`;
+  orb.className = `vm-orb ${state}`;
   label.textContent =
     state === 'listening'  ? 'Listening...' :
     state === 'processing' ? 'Thinking...'  :
-    state === 'speaking'   ? 'Speaking...'  : '';
+    state === 'speaking'   ? (_isIOS ? 'Tap orb to interrupt' : 'Speaking...') : '';
 }
 
 function setVMTranscript(text) {
