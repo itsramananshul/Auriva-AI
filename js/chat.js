@@ -141,27 +141,28 @@ function exitVoiceMode() {
 
 function startVMListening() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec || !_vmActive || _vmRec) return; // already running
+  if (!SpeechRec || !_vmActive || _vmRec) return;
 
   _vmText = '';
   setVMTranscript('');
 
   try {
     const rec = new SpeechRec();
-    rec.continuous     = true;
-    rec.interimResults = true;
+    // Mobile: continuous:true is buggy on Android — keeps restarting and re-detecting
+    // old audio, producing "hellohellohello". Use single-utterance mode instead.
+    rec.continuous     = !_isMobile;
+    rec.interimResults = !_isMobile; // interim results only useful in continuous mode
     rec.lang           = 'en-US';
 
     rec.onresult = (e) => {
-      // While AI is speaking: any speech = interrupt (works on Android/desktop)
-      if (_vmState === 'speaking') {
+      // Desktop only: interrupt while AI is speaking via voice
+      if (_vmState === 'speaking' && !_isMobile) {
         window.speechSynthesis.cancel();
         clearInterval(_vmKeepAlive);
         stopVAD();
         _vmText = '';
         setVMTranscript('');
         setVMState('listening');
-        // Restart recognition so accumulated results start fresh (no stale pre-interrupt speech)
         const old = _vmRec;
         _vmRec = null;
         if (old) { old.onresult = null; old.onend = null; old.stop(); }
@@ -169,7 +170,7 @@ function startVMListening() {
         return;
       }
 
-      if (_vmState !== 'listening') return; // ignore during processing
+      if (_vmState !== 'listening') return;
 
       let text = '';
       for (let i = 0; i < e.results.length; i++) {
@@ -178,26 +179,27 @@ function startVMListening() {
       _vmText = text;
       setVMTranscript(text);
 
+      // On mobile: continuous:false means isFinal is always true — send quickly
+      // On desktop: wait for isFinal then give 1500ms pause before sending
       if (e.results[e.results.length - 1].isFinal) {
         clearTimeout(_vmSendTimer);
         _vmSendTimer = setTimeout(() => {
           const toSend = _vmText.trim();
           if (toSend) sendVoiceMessage(toSend);
-        }, 1500);
+        }, _isMobile ? 400 : 1500);
       }
     };
 
     rec.onend = () => {
       _vmRec = null;
       if (!_vmActive || _vmState === 'processing') return;
-      // Auto-restart — browser may kill recognition during TTS on iOS
       setTimeout(() => {
         if (_vmActive && _vmState !== 'processing') startVMListening();
-      }, 300);
+      }, _isMobile ? 200 : 300);
     };
 
     rec.onerror = (e) => {
-      if (e.error === 'aborted') return;
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
       _vmRec = null;
       setTimeout(() => {
         if (_vmActive && _vmState !== 'processing') startVMListening();
@@ -332,8 +334,17 @@ function speakVMResponse(text) {
 async function startVADThenSpeak(utterance) {
   if (!_vmActive) return;
 
+  // Safety: if mic takes >2s to grant or VAD setup fails, fall back to plain TTS
+  const fallback = setTimeout(() => {
+    if (_vmState === 'speaking' && !window.speechSynthesis.speaking) {
+      window.speechSynthesis.speak(utterance);
+      startVMListening();
+    }
+  }, 2000);
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    clearTimeout(fallback);
     if (!_vmActive) { stream.getTracks().forEach(t => t.stop()); return; }
 
     _vadStream = stream;
@@ -396,9 +407,12 @@ async function startVADThenSpeak(utterance) {
     }, 80);
 
   } catch {
+    clearTimeout(fallback);
     // Mic permission denied — speak without VAD, recognition handles interruption
-    window.speechSynthesis.speak(utterance);
-    startVMListening();
+    if (_vmActive) {
+      window.speechSynthesis.speak(utterance);
+      startVMListening();
+    }
   }
 }
 
