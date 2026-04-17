@@ -530,3 +530,113 @@
   .msg-edit-btn { opacity: 0.55; }
 }
 
+/* ── VOICE CONVERSATION MODE ── */
+
+/* Topbar toggle button */
+.vm-toggle-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: transparent;
+  border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 6px 12px;
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.vm-toggle-btn:hover { border-color: var(--gold); color: var(--gold); }
+.vm-toggle-btn.active {
+  background: rgba(212,175,55,0.1);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.vm-toggle-btn svg { flex-shrink: 0; }
+
+/* Panel — replaces the input area while voice mode is on */
+.vm-panel {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.75rem 2rem;
+  border-top: 0.5px solid var(--border);
+  flex-shrink: 0;
+  min-height: 190px;
+  position: relative;
+}
+.vm-panel.active { display: flex; }
+
+/* Waveform bars */
+.vm-orb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 48px;
+}
+.vm-bar {
+  width: 4px;
+  border-radius: 3px;
+  background: var(--gold);
+  height: 6px;
+}
+.vm-bar:nth-child(1) { --d: 0s; }
+.vm-bar:nth-child(2) { --d: 0.12s; }
+.vm-bar:nth-child(3) { --d: 0.24s; }
+.vm-bar:nth-child(4) { --d: 0.36s; }
+.vm-bar:nth-child(5) { --d: 0.48s; }
+
+/* Listening — gentle soft pulse */
+.vm-orb.listening .vm-bar {
+  animation: vm-listen 1.5s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes vm-listen {
+  0%, 100% { height: 5px; opacity: 0.4; }
+  50%       { height: 24px; opacity: 1; }
+}
+
+/* Processing — slow dim shimmer */
+.vm-orb.processing .vm-bar {
+  animation: vm-process 1.2s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes vm-process {
+  0%, 100% { height: 4px; opacity: 0.25; }
+  50%       { height: 10px; opacity: 0.6; }
+}
+
+/* Speaking — energetic tall wave */
+.vm-orb.speaking .vm-bar {
+  animation: vm-speak 0.65s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes vm-speak {
+  0%, 100% { height: 8px; }
+  50%       { height: 40px; }
+}
+
+/* Idle — flat */
+.vm-orb.idle .vm-bar { height: 5px; opacity: 0.3; }
+
+.vm-label {
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--text-muted);
+}
+
+.vm-transcript {
+  font-size: 14px; line-height: 1.6;
+  color: var(--gold-light); font-style: italic;
+  text-align: center; max-width: 75%;
+  min-height: 22px;
+}
+
+.vm-end-btn {
+  background: transparent;
+  border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 7px 22px;
+  font-size: 12px; color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer; transition: all 0.2s; margin-top: 4px;
+}
+.vm-end-btn:hover { border-color: var(--danger); color: var(--danger); }
+

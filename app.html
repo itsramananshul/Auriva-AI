@@ -91,6 +91,12 @@
         </svg>
       </button>
       <div class="page-ttl" id="page-title">Seek <span>Wisdom</span></div>
+      <button class="vm-toggle-btn" id="btn-voice-mode" title="Voice conversation">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M1 8h2M4 5v6M7 3v10M10 5v6M13 8h2"/>
+        </svg>
+        <span>Talk</span>
+      </button>
       <div class="streak-pill">
         <div class="streak-dot"></div>
         <span id="streak-txt">—</span>
@@ -113,6 +119,20 @@
           <div class="chat-messages" id="chat-messages"></div>
         </div>
       </div>
+      <!-- Voice Mode Panel (replaces input area while active) -->
+      <div class="vm-panel" id="vm-panel">
+        <div class="vm-orb idle" id="vm-orb">
+          <div class="vm-bar"></div>
+          <div class="vm-bar"></div>
+          <div class="vm-bar"></div>
+          <div class="vm-bar"></div>
+          <div class="vm-bar"></div>
+        </div>
+        <div class="vm-label" id="vm-label">Tap to speak</div>
+        <div class="vm-transcript" id="vm-transcript"></div>
+        <button class="vm-end-btn" id="vm-end-btn">End conversation</button>
+      </div>
+
       <div class="input-area">
         <div class="quick-chips" id="quick-chips"></div>
         <div class="input-wrap">

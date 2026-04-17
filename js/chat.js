@@ -20,6 +20,14 @@ function renderMarkdown(text) {
 let _currentChatId = null;
 let _history = []; // { role: 'user'|'model', content: string }
 
+// ─── Voice conversation mode ───
+let _vmActive    = false;
+let _vmState     = 'idle'; // 'listening' | 'processing' | 'speaking'
+let _vmRec       = null;
+let _vmSendTimer = null;
+let _vmText      = '';
+let _vmKeepAlive = null;
+
 // ─── Voice state ───
 let _recognition = null;
 let _voiceState  = 'idle'; // 'idle' | 'recording' | 'confirm'
@@ -43,9 +51,234 @@ export async function initChat() {
   document.getElementById('btn-new-chat')?.addEventListener('click', startNewChat);
 
   initVoiceInput();
+  initVoiceMode();
 
   await loadRecents();
   await loadMostRecentChat();
+}
+
+// ─── Voice Conversation Mode ───
+function initVoiceMode() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const toggleBtn = document.getElementById('btn-voice-mode');
+  const endBtn    = document.getElementById('vm-end-btn');
+
+  if (!SpeechRec || !window.speechSynthesis) {
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    return;
+  }
+
+  // Preload voices (async on some browsers)
+  window.speechSynthesis.getVoices();
+  if ('onvoiceschanged' in window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  toggleBtn?.addEventListener('click', () => {
+    if (_vmActive) exitVoiceMode();
+    else enterVoiceMode();
+  });
+  endBtn?.addEventListener('click', exitVoiceMode);
+}
+
+function enterVoiceMode() {
+  _vmActive = true;
+
+  document.getElementById('vm-panel')?.classList.add('active');
+  document.querySelector('#page-seek .input-area').style.display = 'none';
+  document.getElementById('btn-voice-mode')?.classList.add('active');
+
+  // Make sure we're on the seek page
+  import('./pages.js').then(({ showPage }) => showPage('seek'));
+
+  startVMListening();
+}
+
+function exitVoiceMode() {
+  _vmActive = false;
+
+  stopVMListening();
+  window.speechSynthesis.cancel();
+  clearInterval(_vmKeepAlive);
+
+  document.getElementById('vm-panel')?.classList.remove('active');
+  document.querySelector('#page-seek .input-area').style.display = '';
+  document.getElementById('btn-voice-mode')?.classList.remove('active');
+
+  setVMState('idle');
+}
+
+function startVMListening() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec || !_vmActive) return;
+
+  _vmText = '';
+  setVMTranscript('');
+
+  try {
+    const rec = new SpeechRec();
+    rec.continuous     = true;
+    rec.interimResults = true;
+    rec.lang           = 'en-US';
+
+    rec.onresult = (e) => {
+      // User spoke while AI is talking — interrupt immediately
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        clearInterval(_vmKeepAlive);
+        setVMState('listening');
+      }
+
+      let text = '';
+      for (let i = 0; i < e.results.length; i++) {
+        text += e.results[i][0].transcript;
+      }
+      _vmText = text;
+      setVMTranscript(text);
+
+      // Auto-send 1.5s after the last final result (natural pause)
+      if (e.results[e.results.length - 1].isFinal) {
+        clearTimeout(_vmSendTimer);
+        _vmSendTimer = setTimeout(() => {
+          const toSend = _vmText.trim();
+          if (toSend) sendVoiceMessage(toSend);
+        }, 1500);
+      }
+    };
+
+    rec.onend = () => {
+      _vmRec = null;
+      // Restart automatically if still listening (browser killed the session)
+      if (_vmActive && _vmState === 'listening') startVMListening();
+    };
+
+    rec.onerror = (e) => {
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      if (_vmActive && _vmState === 'listening') startVMListening();
+    };
+
+    rec.start();
+    _vmRec = rec;
+    setVMState('listening');
+  } catch {
+    setVMState('idle');
+  }
+}
+
+function stopVMListening() {
+  clearTimeout(_vmSendTimer);
+  if (_vmRec) {
+    const rec = _vmRec;
+    _vmRec = null;
+    rec.onend = null;
+    rec.stop();
+  }
+}
+
+async function sendVoiceMessage(text) {
+  stopVMListening();
+  setVMState('processing');
+  setVMTranscript('');
+
+  if (!_currentChatId) {
+    const id = await createChat();
+    if (!id) { if (_vmActive) startVMListening(); return; }
+  }
+
+  const isFirstMsg = _history.length === 0;
+
+  appendMsg('user', text, null, false);
+  saveMessage('user', text);
+
+  const bubble = createStreamBubble();
+
+  try {
+    const response = await generateResponse(
+      text, _history, getProfile(), getDailyVerse(),
+      (partial) => updateStreamBubble(bubble, partial)
+    );
+
+    finalizeStreamBubble(bubble, response);
+    _history.push({ role: 'user',  content: text });
+    _history.push({ role: 'model', content: response });
+    saveMessage('ai', response);
+    if (isFirstMsg) await titleChat(text);
+
+    speakVMResponse(response);
+  } catch (err) {
+    finalizeStreamBubble(bubble, `Something went wrong: ${err.message}`);
+    if (_vmActive) startVMListening();
+  }
+}
+
+function speakVMResponse(text) {
+  if (!_vmActive) return;
+
+  // Strip markdown so it reads naturally
+  const clean = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/#{1,3}\s/g, '')
+    .replace(/<br\s*\/?>/gi, '. ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const utterance  = new SpeechSynthesisUtterance(clean);
+  utterance.rate   = 0.92;
+  utterance.pitch  = 1.0;
+
+  // Pick the best available English voice
+  const voices = window.speechSynthesis.getVoices();
+  const voice  = voices.find(v => v.name.includes('Samantha'))      // iOS
+              || voices.find(v => v.name.includes('Karen'))
+              || voices.find(v => v.name.includes('Moira'))
+              || voices.find(v => v.name.includes('Google UK English Female'))
+              || voices.find(v => v.name.includes('Google US English'))
+              || voices.find(v => v.lang.startsWith('en') && v.localService)
+              || voices.find(v => v.lang.startsWith('en'))
+              || null;
+  if (voice) utterance.voice = voice;
+
+  // Chrome bug: speechSynthesis silently stops after ~15s — keep it alive
+  _vmKeepAlive = setInterval(() => {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    } else {
+      clearInterval(_vmKeepAlive);
+    }
+  }, 10000);
+
+  utterance.onend = () => {
+    clearInterval(_vmKeepAlive);
+    if (_vmActive) { _vmText = ''; startVMListening(); }
+  };
+  utterance.onerror = () => {
+    clearInterval(_vmKeepAlive);
+    if (_vmActive) startVMListening();
+  };
+
+  setVMState('speaking');
+  window.speechSynthesis.cancel(); // clear any queued utterances
+  window.speechSynthesis.speak(utterance);
+}
+
+function setVMState(state) {
+  _vmState = state;
+  const orb   = document.getElementById('vm-orb');
+  const label = document.getElementById('vm-label');
+  if (!orb) return;
+  orb.className    = `vm-orb ${state}`;
+  label.textContent =
+    state === 'listening'  ? 'Listening...' :
+    state === 'processing' ? 'Thinking...'  :
+    state === 'speaking'   ? 'Speaking...'  : '';
+}
+
+function setVMTranscript(text) {
+  const el = document.getElementById('vm-transcript');
+  if (el) el.textContent = text;
 }
 
 // ─── Voice Input ───
