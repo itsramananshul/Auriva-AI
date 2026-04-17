@@ -80,7 +80,7 @@ async function initApp(user, profile) {
   setEl('sidebar-religion', profile.deity || '—');
   setEl('sidebar-deity', profile.deity || '—');
   setEl('sidebar-source', `${profile.source || 'Bhagavad Gita'} · ${profile.language || 'English'}`);
-  setEl('streak-txt', 'Day 1 streak');
+  setEl('streak-txt', calcStreak(user.id));
 
   // Init modules
   initNavigation();
@@ -241,12 +241,11 @@ function initProfileEdit(user) {
       // Update local profile state
       _profile = { ..._profile, full_name: name, deity, source, language: lang };
 
-      // Update sidebar display
-      setEl('sidebar-name', name);
-      setEl('sidebar-avatar', name[0]?.toUpperCase() || 'S');
-      setEl('sidebar-religion', deity);
-
       overlay.classList.remove('open');
+
+      // Refresh quick chips to match new scripture
+      const { renderQuickChips } = await import('./chat.js');
+      renderQuickChips();
     } catch (err) {
       errEl.textContent = err.message;
     } finally {
@@ -284,6 +283,37 @@ export function showConfirm(message = 'This cannot be undone.', title = 'Are you
     cancelBtn.addEventListener('click', onCancel);
     overlay.addEventListener('click', onOverlay);
   });
+}
+
+// ─── Streak ───
+function calcStreak(userId) {
+  const key       = `auriva_streak_${userId}`;
+  const today     = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const stored    = JSON.parse(localStorage.getItem(key) || 'null');
+
+  let count = 1;
+
+  if (stored) {
+    const last = stored.lastActiveDate;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    if (last === today) {
+      // Already opened today — keep streak as-is
+      count = stored.streakCount;
+    } else if (last === yesterdayStr) {
+      // Opened yesterday — extend streak
+      count = stored.streakCount + 1;
+    } else {
+      // Missed a day — reset
+      count = 1;
+    }
+  }
+
+  localStorage.setItem(key, JSON.stringify({ lastActiveDate: today, streakCount: count }));
+
+  return count === 1 ? 'Day 1 streak' : `${count} day streak`;
 }
 
 function setEl(id, text) {
