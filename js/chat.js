@@ -135,7 +135,12 @@ function startVMListening() {
         _vmText = '';
         setVMTranscript('');
         setVMState('listening');
-        return; // don't treat this as a message — wait for next utterance
+        // Restart recognition so accumulated results start fresh (no stale pre-interrupt speech)
+        const old = _vmRec;
+        _vmRec = null;
+        if (old) { old.onend = null; old.stop(); }
+        setTimeout(() => { if (_vmActive && !_vmRec) startVMListening(); }, 300);
+        return;
       }
 
       if (_vmState !== 'listening') return; // ignore during processing
@@ -230,8 +235,8 @@ async function sendVoiceMessage(text) {
 function speakVMResponse(text) {
   if (!_vmActive) return;
 
-  // Stop recognition while TTS plays — mobile browsers block mic during TTS anyway
-  stopVMListening();
+  // Keep recognition running — onresult will detect interruption during 'speaking' state.
+  // If iOS kills the recognition while TTS plays, onend will auto-restart it.
 
   // Strip markdown so it reads naturally
   const clean = text
@@ -275,7 +280,13 @@ function speakVMResponse(text) {
   const onDone = () => {
     clearInterval(_vmKeepAlive);
     stopVAD();
-    if (_vmActive) { _vmText = ''; startVMListening(); }
+    if (_vmActive) {
+      _vmText = '';
+      setVMTranscript('');
+      // Recognition may already be running (we restarted it above).
+      // startVMListening guards against duplicates via _vmRec check.
+      startVMListening();
+    }
   };
   utterance.onend   = onDone;
   utterance.onerror = onDone;
@@ -284,7 +295,13 @@ function speakVMResponse(text) {
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 
+  // Restart recognition so user can interrupt during TTS.
+  // startVMListening's guard (line ~178) won't override 'speaking' state,
+  // so onresult will catch interruption correctly.
+  startVMListening();
+
   // Start VAD AFTER a short delay (so TTS startup noise doesn't self-trigger)
+  // VAD acts as backup on iOS where recognition may be blocked by TTS.
   setTimeout(() => {
     if (_vmState === 'speaking') startVAD();
   }, 600);
@@ -335,11 +352,15 @@ async function startVAD() {
         if (ticks >= 3 && _vmState === 'speaking') {
           window.speechSynthesis.cancel();
           clearInterval(_vmKeepAlive);
-          stopVAD(); // release mic FIRST
+          stopVAD(); // release mic so SpeechRecognition can use it (important on iOS)
           _vmText = '';
+          setVMTranscript('');
           setVMState('listening');
-          // Small delay so the mic is fully released before SpeechRecognition grabs it
-          setTimeout(() => { if (_vmActive) startVMListening(); }, 250);
+          // On desktop/Android: recognition is already running — state change is enough.
+          // On iOS: recognition may have been killed while TTS played → restart it.
+          if (!_vmRec) {
+            setTimeout(() => { if (_vmActive && !_vmRec) startVMListening(); }, 600);
+          }
         }
       } else {
         ticks = 0;
