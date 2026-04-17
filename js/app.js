@@ -180,20 +180,34 @@ function initSettings() {
   closeBtn?.addEventListener('click', () => overlay.classList.remove('open'));
   overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 
-  // Edit profile: close settings, open profile edit modal
+  // Edit profile: close settings, open profile edit modal (pre-filled via openProfileModal)
   editBtn?.addEventListener('click', () => {
     overlay.classList.remove('open');
-    // Trigger the user-pill click which opens the profile edit modal
-    document.getElementById('btn-edit-profile')?.click();
+    openProfileModal();
   });
 
   signoutBtn?.addEventListener('click', handleSignout);
 }
 
 // ─── Profile Edit Modal ───
+function openProfileModal() {
+  const overlay    = document.getElementById('modal-overlay');
+  const nameInput  = document.getElementById('edit-name');
+  const deitySelect = document.getElementById('edit-deity');
+  const langSelect  = document.getElementById('edit-lang');
+  const errEl      = document.getElementById('modal-err');
+  if (!overlay) return;
+  nameInput.value = _profile?.full_name || '';
+  const currentVal = `${_profile?.deity}|${_profile?.source}`;
+  const opt = deitySelect.querySelector(`option[value="${currentVal}"]`);
+  if (opt) deitySelect.value = currentVal;
+  langSelect.value = _profile?.language || 'English';
+  errEl.textContent = '';
+  overlay.classList.add('open');
+}
+
 function initProfileEdit(user) {
   const overlay   = document.getElementById('modal-overlay');
-  const editBtn   = document.getElementById('btn-edit-profile');
   const cancelBtn = document.getElementById('btn-modal-cancel');
   const saveBtn   = document.getElementById('btn-modal-save');
   const nameInput = document.getElementById('edit-name');
@@ -201,18 +215,7 @@ function initProfileEdit(user) {
   const langSelect  = document.getElementById('edit-lang');
   const errEl     = document.getElementById('modal-err');
 
-  const openModal = () => {
-    // Pre-fill with current profile values
-    nameInput.value = _profile?.full_name || '';
-    const currentVal = `${_profile?.deity}|${_profile?.source}`;
-    const opt = deitySelect.querySelector(`option[value="${currentVal}"]`);
-    if (opt) deitySelect.value = currentVal;
-    langSelect.value = _profile?.language || 'English';
-    errEl.textContent = '';
-    overlay.classList.add('open');
-  };
-
-  editBtn?.addEventListener('click', openModal);
+  // no editBtn reference needed — settings modal calls openProfileModal() directly
   cancelBtn?.addEventListener('click', () => overlay.classList.remove('open'));
   overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 
