@@ -298,14 +298,16 @@ function speakVMResponse(text) {
               || null;
   if (voice) utterance.voice = voice;
 
+  // Android Chrome kills speechSynthesis after ~5-7 s of silence / inactivity.
+  // Kick it every 4 s with pause+resume to reset the internal watchdog timer.
+  // Must fire BEFORE the cutoff — 10 s was too late.
   _vmKeepAlive = setInterval(() => {
-    if (window.speechSynthesis.speaking) {
+    if (!window.speechSynthesis.speaking) { clearInterval(_vmKeepAlive); return; }
+    if (!window.speechSynthesis.paused) {
       window.speechSynthesis.pause();
       window.speechSynthesis.resume();
-    } else {
-      clearInterval(_vmKeepAlive);
     }
-  }, 10000);
+  }, 4000);
 
   const onDone = () => {
     clearInterval(_vmKeepAlive);
