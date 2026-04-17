@@ -170,6 +170,7 @@ function initSettings() {
   const signoutBtn = document.getElementById('btn-settings-signout');
 
   const open = () => {
+    setEl('settings-name',  _profile?.full_name || '—');
     setEl('settings-deity', _profile?.deity || '—');
     setEl('settings-src',   `${_profile?.source || 'Bhagavad Gita'} · ${_profile?.language || 'English'}`);
     overlay.classList.add('open');
