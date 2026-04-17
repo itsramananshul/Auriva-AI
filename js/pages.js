@@ -18,22 +18,28 @@ function verseRef(v) {
 export async function loadDailyVerseCard() {
   const source = getProfile()?.source || 'Bhagavad Gita';
   _verseLoading = true;
+
+  // Show a "loading" label while fetching
+  const ref  = document.getElementById('mini-ref');
+  const tag  = document.getElementById('mini-tag');
+  const sans = document.getElementById('mini-sanskrit');
+  const tran = document.getElementById('mini-trans');
+  if (ref) ref.textContent = 'Loading verse…';
+
   try {
     dailyVerse = await fetchRandomVerse(source);
     setDailyVerse(dailyVerse);
+  } catch {
+    // fetchRandomVerse always returns a fallback, so this is extra insurance
+    dailyVerse = { translation: 'Peace comes from within. Do not seek it without.', ref: '—' };
   } finally {
     _verseLoading = false;
   }
 
-  // Mini card on seek page
-  const ref   = document.getElementById('mini-ref');
-  const tag   = document.getElementById('mini-tag');
-  const sans  = document.getElementById('mini-sanskrit');
-  const trans = document.getElementById('mini-trans');
   if (ref)  ref.textContent  = verseRef(dailyVerse);
   if (tag)  tag.textContent  = "Today's Verse";
   if (sans) { sans.textContent = dailyVerse.sanskrit || ''; sans.style.display = dailyVerse.sanskrit ? '' : 'none'; }
-  if (trans) trans.textContent = dailyVerse.translation;
+  if (tran) tran.textContent  = dailyVerse.translation || '';
 
   renderDailyPage();
 }

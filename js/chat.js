@@ -610,7 +610,10 @@ export async function startNewChat() {
 }
 
 async function loadMostRecentChat() {
-  if (!getSb()) return;
+  if (!getSb()) {
+    // No DB connection — chips were already rendered in initChat, nothing more to do
+    return;
+  }
   const { data: { session } } = await getSb().auth.getSession();
   if (!session?.user) return;
 

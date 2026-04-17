@@ -1,26 +1,46 @@
 // ─── Daily Verse (Gemini-powered — no external API dependency) ───
 
+const VERSE_FALLBACKS = {
+  'Bible': {
+    sanskrit: '',
+    translation: 'I can do all things through Christ who strengthens me.',
+    ref: 'Philippians 4:13'
+  },
+  'Quran': {
+    sanskrit: 'إِنَّ مَعَ الْعُسْرِ يُسْرًا',
+    translation: 'Verily, with every hardship comes ease.',
+    ref: 'Surah Ash-Sharh 94:6'
+  },
+  'Guru Granth Sahib': {
+    sanskrit: 'ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿਗੁਰੂ ਵਾਹਿ ਜੀਉ',
+    translation: 'Wahe Guru — the wondrous one whose praises are beyond description.',
+    ref: 'Guru Granth Sahib, Ang 1'
+  },
+  'default': {
+    chapter: 2, verse: 47,
+    sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
+    translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.',
+    ref: 'Bhagavad Gita · Ch. 2 · V. 47'
+  }
+};
+
 export async function fetchRandomVerse(source = 'Bhagavad Gita') {
+  // AbortController timeout — prevents infinite hangs on slow mobile connections
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
+
   try {
     const seed = Date.now() + Math.random();
-    const res = await fetch(`/api/daily-verse?seed=${seed}&source=${encodeURIComponent(source)}`);
+    const res = await fetch(
+      `/api/daily-verse?seed=${seed}&source=${encodeURIComponent(source)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
     if (!res.ok) throw new Error('verse API error');
     return await res.json();
   } catch {
-    if (source === 'Bible') {
-      return {
-        book: 'Philippians', chapter: 4, verse: 13,
-        sanskrit: '',
-        translation: 'I can do all things through Christ who strengthens me.',
-        ref: 'Philippians 4:13'
-      };
-    }
-    return {
-      chapter: 2, verse: 47,
-      sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
-      translation: 'You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.',
-      ref: 'Bhagavad Gita · Ch. 2 · V. 47'
-    };
+    clearTimeout(timeout);
+    return VERSE_FALLBACKS[source] || VERSE_FALLBACKS['default'];
   }
 }
 
