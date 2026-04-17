@@ -36,35 +36,33 @@ async function boot() {
     return;
   }
 
-  // ── Live listener (handles SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT, INITIAL_SESSION) ──
-  // INITIAL_SESSION fires immediately on page load with the stored session.
-  // SIGNED_IN fires after a fresh login (fallback if INITIAL_SESSION missed it).
+  // ── Primary: direct getSession() — works on every browser, every device ──
+  // This is the proven path. We call it first and don't wait for auth events.
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      await handleSession(session.user);
+    } else if (window.location.pathname.includes('app.html')) {
+      window.location.href = 'index.html';
+    }
+  } catch {
+    if (window.location.pathname.includes('app.html')) {
+      window.location.href = 'index.html';
+    }
+  }
+
+  // ── Secondary: auth state listener for live events ──
+  // Catches INITIAL_SESSION (Android/old iOS post-redirect timing edge case),
+  // SIGNED_IN (OAuth/magic-link), SIGNED_OUT, TOKEN_REFRESHED.
+  // _appReady guard prevents double-init if getSession() already handled it.
   _sb.auth.onAuthStateChange(async (event, session) => {
-    if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user) {
+    if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user && !_appReady) {
       await handleSession(session.user);
     }
     if (event === 'SIGNED_OUT') {
       window.location.href = 'index.html';
     }
   });
-
-  // ── Direct getSession() check — belt-and-suspenders ──
-  // On Android and older iOS, INITIAL_SESSION can fire before the listener is set up,
-  // or may not fire at all depending on the Supabase JS version in the CDN cache.
-  // Calling getSession() directly covers every case.
-  try {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (session?.user) {
-      await handleSession(session.user);          // _appReady guard prevents double-init
-    } else if (window.location.pathname.includes('app.html')) {
-      // Give onAuthStateChange 1.5 s to fire (handles post-redirect timing on slow devices)
-      setTimeout(() => { if (!_appReady) window.location.href = 'index.html'; }, 1500);
-    }
-  } catch {
-    if (window.location.pathname.includes('app.html')) {
-      setTimeout(() => { if (!_appReady) window.location.href = 'index.html'; }, 2000);
-    }
-  }
 }
 
 async function handleSession(user) {
