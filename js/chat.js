@@ -280,10 +280,6 @@ function speakVMResponse(text) {
     .replace(/\s{2,}/g, ' ')
     .trim();
 
-  const utterance = new SpeechSynthesisUtterance(clean);
-  utterance.rate  = 1.0;
-  utterance.pitch = 1.0;
-
   const voices = window.speechSynthesis.getVoices();
   const voice  = voices.find(v => v.name.includes('Samantha') && v.name.includes('Enhanced'))
               || voices.find(v => v.name.includes('Aria'))
@@ -296,18 +292,6 @@ function speakVMResponse(text) {
               || voices.find(v => v.lang.startsWith('en') && v.localService)
               || voices.find(v => v.lang.startsWith('en'))
               || null;
-  if (voice) utterance.voice = voice;
-
-  // Android Chrome kills speechSynthesis after ~5-7 s of silence / inactivity.
-  // Kick it every 4 s with pause+resume to reset the internal watchdog timer.
-  // Must fire BEFORE the cutoff — 10 s was too late.
-  _vmKeepAlive = setInterval(() => {
-    if (!window.speechSynthesis.speaking) { clearInterval(_vmKeepAlive); return; }
-    if (!window.speechSynthesis.paused) {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    }
-  }, 4000);
 
   const onDone = () => {
     clearInterval(_vmKeepAlive);
@@ -318,42 +302,76 @@ function speakVMResponse(text) {
       startVMListening();
     }
   };
-  utterance.onend   = onDone;
-  utterance.onerror = onDone;
 
   setVMState('speaking');
   window.speechSynthesis.cancel();
 
   if (_isMobile) {
-    // ── Mobile path (iOS + Android) ──
-    // iOS: system kills SpeechRecognition during TTS anyway.
-    // Android: speaker bleeds into mic → self-interrupts. Don't run recognition during TTS.
-    // Tap orb to interrupt. onDone restarts listening when TTS finishes.
-    //
-    // Android also has a known bug where speechSynthesis.onend never fires.
-    // Add a timeout fallback based on estimated speech duration so we never get stuck.
-    const wordCount = clean.split(/\s+/).length;
-    const estimatedMs = Math.max(wordCount / 2.5 * 1000, 3000) + 4000; // generous buffer
-    let ttsTimedOut = false;
-    const ttsTimeout = setTimeout(() => {
-      if (_vmState === 'speaking' && _vmActive) {
-        ttsTimedOut = true;
-        window.speechSynthesis.cancel();
-        onDone();
-      }
-    }, estimatedMs);
+    // ── Mobile path: sentence chunking ──
+    // Android Chrome has a hard ~5-7 s cutoff on any single utterance — pause/resume
+    // cannot reliably prevent it. Fix: split the response into individual sentences and
+    // speak each as a separate SpeechSynthesisUtterance chained via onend.
+    // Each sentence is short enough to never trigger the cutoff.
+    // Tap orb to interrupt (_vmState check in chain handles it gracefully).
+    const sentences = clean.match(/[^.!?;\n]+[.!?;\n]*/g)
+      ?.map(s => s.trim()).filter(Boolean) || [clean];
 
-    const wrappedOnDone = () => {
-      if (ttsTimedOut) return; // already handled
-      clearTimeout(ttsTimeout);
-      onDone();
+    let idx = 0;
+    const speakNext = () => {
+      // Interrupted (orb tap) or all done
+      if (!_vmActive || _vmState !== 'speaking') { onDone(); return; }
+      if (idx >= sentences.length) { onDone(); return; }
+
+      const utt = new SpeechSynthesisUtterance(sentences[idx]);
+      utt.rate  = 1.0;
+      utt.pitch = 1.0;
+      if (voice) utt.voice = voice;
+
+      // Per-sentence safety timeout — Android sometimes never fires onend
+      let timedOut = false;
+      const sentenceTimeout = setTimeout(() => {
+        if (_vmState === 'speaking' && _vmActive) {
+          timedOut = true;
+          idx++;
+          speakNext();
+        }
+      }, 10000);
+
+      utt.onend = () => {
+        if (timedOut) return;
+        clearTimeout(sentenceTimeout);
+        idx++;
+        speakNext();
+      };
+      utt.onerror = () => {
+        if (timedOut) return;
+        clearTimeout(sentenceTimeout);
+        onDone(); // stop chain on error
+      };
+
+      window.speechSynthesis.speak(utt);
     };
-    utterance.onend   = wrappedOnDone;
-    utterance.onerror = wrappedOnDone;
 
-    window.speechSynthesis.speak(utterance);
+    speakNext();
   } else {
     // ── Desktop path ──
+    // Single utterance + keepAlive kick every 4 s (desktop browsers don't have the
+    // Android cutoff but may pause on inactivity — keepAlive prevents that).
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate  = 1.0;
+    utterance.pitch = 1.0;
+    if (voice) utterance.voice = voice;
+    utterance.onend   = onDone;
+    utterance.onerror = onDone;
+
+    _vmKeepAlive = setInterval(() => {
+      if (!window.speechSynthesis.speaking) { clearInterval(_vmKeepAlive); return; }
+      if (!window.speechSynthesis.paused) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 4000);
+
     // Two-phase VAD: calibrate silence BEFORE TTS, then calibrate speaker bleed DURING TTS.
     // This prevents the mic from picking up the speaker output and self-triggering.
     startVADThenSpeak(utterance);
