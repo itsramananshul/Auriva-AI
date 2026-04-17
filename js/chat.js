@@ -182,13 +182,15 @@ function startVMListening() {
       _vmText = text;
       setVMTranscript(text);
 
-      // On mobile: continuous:false means isFinal is always true — send quickly
-      // On desktop: wait for isFinal then give 1500ms pause before sending
+      // On mobile: continuous:false means isFinal is always true — send quickly.
+      // IMPORTANT: capture `text` in the closure right now, NOT via _vmText.
+      // On Android, startVMListening() (called from onend ~200ms from now) clears
+      // _vmText before the 400ms timer fires — so reading _vmText at fire time = ''.
       if (e.results[e.results.length - 1].isFinal) {
         clearTimeout(_vmSendTimer);
+        const captured = text; // freeze the text now; _vmText may be wiped before timer fires
         _vmSendTimer = setTimeout(() => {
-          const toSend = _vmText.trim();
-          if (toSend) sendVoiceMessage(toSend);
+          if (captured.trim()) sendVoiceMessage(captured.trim());
         }, _isMobile ? 400 : 1500);
       }
     };
@@ -196,9 +198,11 @@ function startVMListening() {
     rec.onend = () => {
       _vmRec = null;
       if (!_vmActive || _vmState === 'processing') return;
+      // Mobile: 650ms > 400ms send timer — ensures the send fires before we restart listening.
+      // This also reduces residual-audio re-triggering ("hello hello hello") on Android.
       setTimeout(() => {
         if (_vmActive && _vmState !== 'processing') startVMListening();
-      }, _isMobile ? 200 : 300);
+      }, _isMobile ? 650 : 300);
     };
 
     rec.onerror = (e) => {
