@@ -10,7 +10,9 @@ let _sb = null;
 export function getSb() { return _sb; }
 
 try {
-  const cfg = await fetch('/api/app-config').then(r => r.json());
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 8000); // 8 s timeout — prevents cold-start hangs on mobile
+  const cfg = await fetch('/api/app-config', { signal: ctrl.signal }).then(r => r.json());
   if (cfg?.supabaseUrl && cfg?.supabaseAnonKey) {
     _sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
   }
@@ -29,16 +31,14 @@ export const setDailyVerse = (v) => { _dailyVerse = v; };
 // ─── Boot ───
 async function boot() {
   if (!_sb) {
-    // Config fetch failed — show a "could not connect" message instead of blank screen
     const el = document.getElementById('mini-ref');
     if (el) el.textContent = 'Could not connect — please refresh.';
     return;
   }
 
-  // onAuthStateChange fires:
-  //   INITIAL_SESSION — immediately on load with stored session (most common case on redirect)
-  //   SIGNED_IN       — after a fresh sign-in (fallback for timing edge cases)
-  //   SIGNED_OUT      — after signout
+  // ── Live listener (handles SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT, INITIAL_SESSION) ──
+  // INITIAL_SESSION fires immediately on page load with the stored session.
+  // SIGNED_IN fires after a fresh login (fallback if INITIAL_SESSION missed it).
   _sb.auth.onAuthStateChange(async (event, session) => {
     if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user) {
       await handleSession(session.user);
@@ -46,13 +46,25 @@ async function boot() {
     if (event === 'SIGNED_OUT') {
       window.location.href = 'index.html';
     }
-    // INITIAL_SESSION with no session = not logged in
-    if (event === 'INITIAL_SESSION' && !session?.user) {
-      if (window.location.pathname.includes('app.html')) {
-        window.location.href = 'index.html';
-      }
-    }
   });
+
+  // ── Direct getSession() check — belt-and-suspenders ──
+  // On Android and older iOS, INITIAL_SESSION can fire before the listener is set up,
+  // or may not fire at all depending on the Supabase JS version in the CDN cache.
+  // Calling getSession() directly covers every case.
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      await handleSession(session.user);          // _appReady guard prevents double-init
+    } else if (window.location.pathname.includes('app.html')) {
+      // Give onAuthStateChange 1.5 s to fire (handles post-redirect timing on slow devices)
+      setTimeout(() => { if (!_appReady) window.location.href = 'index.html'; }, 1500);
+    }
+  } catch {
+    if (window.location.pathname.includes('app.html')) {
+      setTimeout(() => { if (!_appReady) window.location.href = 'index.html'; }, 2000);
+    }
+  }
 }
 
 async function handleSession(user) {
