@@ -27,6 +27,10 @@ let _vmRec       = null;
 let _vmSendTimer = null;
 let _vmText      = '';
 let _vmKeepAlive = null;
+// VAD (Voice Activity Detection) — used to detect interruption while AI speaks
+let _vadStream   = null;
+let _vadCtx      = null;
+let _vadInterval = null;
 
 // ─── Voice state ───
 let _recognition = null;
@@ -98,6 +102,7 @@ function exitVoiceMode() {
   _vmActive = false;
 
   stopVMListening();
+  stopVAD();
   window.speechSynthesis.cancel();
   clearInterval(_vmKeepAlive);
 
@@ -214,6 +219,9 @@ async function sendVoiceMessage(text) {
 function speakVMResponse(text) {
   if (!_vmActive) return;
 
+  // Stop recognition while TTS plays — mobile browsers block mic during TTS anyway
+  stopVMListening();
+
   // Strip markdown so it reads naturally
   const clean = text
     .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -224,15 +232,18 @@ function speakVMResponse(text) {
     .replace(/\s{2,}/g, ' ')
     .trim();
 
-  const utterance  = new SpeechSynthesisUtterance(clean);
-  utterance.rate   = 0.92;
-  utterance.pitch  = 1.0;
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.rate  = 1.0;   // natural speed — slower sounds more robotic
+  utterance.pitch = 1.0;
 
-  // Pick the best available English voice
+  // Best available English voice — prioritise neural/enhanced/natural
   const voices = window.speechSynthesis.getVoices();
-  const voice  = voices.find(v => v.name.includes('Samantha'))      // iOS
+  const voice  = voices.find(v => v.name.includes('Samantha') && v.name.includes('Enhanced'))
+              || voices.find(v => v.name.includes('Aria'))            // Edge neural
+              || voices.find(v => v.name.includes('Jenny'))           // Edge neural
+              || voices.find(v => /Natural|Enhanced|Premium/.test(v.name) && v.lang.startsWith('en'))
+              || voices.find(v => v.name.includes('Samantha'))        // iOS
               || voices.find(v => v.name.includes('Karen'))
-              || voices.find(v => v.name.includes('Moira'))
               || voices.find(v => v.name.includes('Google UK English Female'))
               || voices.find(v => v.name.includes('Google US English'))
               || voices.find(v => v.lang.startsWith('en') && v.localService)
@@ -240,7 +251,7 @@ function speakVMResponse(text) {
               || null;
   if (voice) utterance.voice = voice;
 
-  // Chrome bug: speechSynthesis silently stops after ~15s — keep it alive
+  // Chrome bug: TTS silently stops after ~15s — keep it alive
   _vmKeepAlive = setInterval(() => {
     if (window.speechSynthesis.speaking) {
       window.speechSynthesis.pause();
@@ -250,18 +261,70 @@ function speakVMResponse(text) {
     }
   }, 10000);
 
-  utterance.onend = () => {
+  const onDone = () => {
     clearInterval(_vmKeepAlive);
+    stopVAD();
     if (_vmActive) { _vmText = ''; startVMListening(); }
   };
-  utterance.onerror = () => {
-    clearInterval(_vmKeepAlive);
-    if (_vmActive) startVMListening();
-  };
+  utterance.onend   = onDone;
+  utterance.onerror = onDone;
 
   setVMState('speaking');
-  window.speechSynthesis.cancel(); // clear any queued utterances
+  window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
+
+  // Start VAD AFTER a short delay (so TTS startup noise doesn't self-trigger)
+  setTimeout(() => {
+    if (_vmState === 'speaking') startVAD();
+  }, 600);
+}
+
+// ─── VAD: raw mic monitoring to detect interruption while AI speaks ───
+async function startVAD() {
+  if (_vadStream) return; // already running
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    _vadStream   = stream;
+    _vadCtx      = new (window.AudioContext || window.webkitAudioContext)();
+    const source   = _vadCtx.createMediaStreamSource(stream);
+    const analyser = _vadCtx.createAnalyser();
+    analyser.fftSize               = 512;
+    analyser.smoothingTimeConstant = 0.4;
+    source.connect(analyser);
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let ticks  = 0; // consecutive frames above threshold
+
+    _vadInterval = setInterval(() => {
+      analyser.getByteFrequencyData(data);
+      // RMS volume — more stable than peak for voice detection
+      const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length);
+
+      if (rms > 18) {
+        ticks++;
+        if (ticks >= 3 && _vmState === 'speaking') {
+          // User is speaking — interrupt AI immediately
+          window.speechSynthesis.cancel();
+          clearInterval(_vmKeepAlive);
+          stopVAD();
+          _vmText = '';
+          setVMState('listening');
+          startVMListening();
+        }
+      } else {
+        ticks = 0;
+      }
+    }, 80); // check every 80ms
+  } catch {
+    // Mic permission denied or not available — VAD won't work, that's ok
+  }
+}
+
+function stopVAD() {
+  clearInterval(_vadInterval);
+  _vadInterval = null;
+  if (_vadStream) { _vadStream.getTracks().forEach(t => t.stop()); _vadStream = null; }
+  if (_vadCtx)   { _vadCtx.close().catch(() => {}); _vadCtx = null; }
 }
 
 function setVMState(state) {
