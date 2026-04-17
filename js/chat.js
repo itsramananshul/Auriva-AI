@@ -89,10 +89,10 @@ function initVoiceMode() {
   });
   endBtn?.addEventListener('click', exitVoiceMode);
 
-  // iOS only: tap the orb to interrupt while AI is speaking
-  // (SpeechRecognition is killed by iOS during TTS, so voice interruption isn't possible)
+  // Mobile: tap the orb to interrupt while AI is speaking
+  // (recognition doesn't run during TTS on mobile to avoid speaker bleed / OS conflicts)
   document.getElementById('vm-orb')?.addEventListener('click', () => {
-    if (_isIOS && _vmState === 'speaking') {
+    if (_isMobile && _vmState === 'speaking') {
       window.speechSynthesis.cancel();
       clearInterval(_vmKeepAlive);
       _vmText = '';
@@ -314,11 +314,12 @@ function speakVMResponse(text) {
   window.speechSynthesis.cancel();
 
   if (_isMobile) {
-    // ── Mobile path ──
-    // iOS: TTS kills SpeechRecognition — just speak and let onDone restart listening after.
-    // Android: recognition can run during TTS, onresult handles interruption.
+    // ── Mobile path (iOS + Android) ──
+    // iOS: system kills SpeechRecognition during TTS anyway.
+    // Android: speaker bleeds into mic → onresult fires with AI's own words → self-interrupts.
+    // Fix for both: don't run recognition during TTS. Tap orb to interrupt.
+    // onDone restarts listening automatically when TTS finishes.
     window.speechSynthesis.speak(utterance);
-    if (!_isIOS) startVMListening(); // Android: can interrupt via onresult
   } else {
     // ── Desktop path ──
     // Two-phase VAD: calibrate silence BEFORE TTS, then calibrate speaker bleed DURING TTS.
@@ -417,7 +418,7 @@ function setVMState(state) {
   label.textContent =
     state === 'listening'  ? 'Listening...' :
     state === 'processing' ? 'Thinking...'  :
-    state === 'speaking'   ? (_isIOS ? 'Tap orb to interrupt' : 'Speaking...') : '';
+    state === 'speaking'   ? (_isMobile ? 'Tap orb to interrupt' : 'Speaking...') : '';
 }
 
 function setVMTranscript(text) {
