@@ -24,13 +24,15 @@ const BIBLE_IDS = {
 export default async function handler(req, res) {
   const seed     = req.query.seed   || Math.random();
   const source   = req.query.source || 'Bhagavad Gita';
-  const isBible  = source === 'Bible';
-  const isQuran  = source === 'Quran';
+  const isBible = source === 'Bible';
+  const isQuran = source === 'Quran';
+  const isSikh  = source === 'Guru Granth Sahib';
 
   // Tier 1: Real API
   try {
     let verse;
-    if (isQuran)      verse = await getQuranVerse();
+    if (isSikh)       verse = await getSikhVerse();
+    else if (isQuran) verse = await getQuranVerse();
     else if (isBible) verse = await getBibleVerse(seed);
     else              verse = await getGitaVerse();
     return res.status(200).json(verse);
@@ -47,9 +49,38 @@ export default async function handler(req, res) {
   }
 
   // Tier 3: Hardcoded fallback — always works
-  if (isQuran)      return res.status(200).json(quranFallback());
+  if (isSikh)       return res.status(200).json(sikhFallback());
+  else if (isQuran) return res.status(200).json(quranFallback());
   else if (isBible) return res.status(200).json(bibleFallback());
   else              return res.status(200).json(gitaFallback());
+}
+
+// ─── Guru Granth Sahib — api.gurbaninow.com (free, no API key) ───
+async function getSikhVerse() {
+  const res = await fetch('https://api.gurbaninow.com/v2/shabad/random');
+  if (!res.ok) throw new Error(`GurbaniNow API ${res.status}`);
+  const data = await res.json();
+
+  const lines = data.shabad;
+  if (!lines?.length) throw new Error('No lines in shabad');
+
+  // Pick a random line that has both Gurmukhi and English translation
+  const valid = lines.filter(l =>
+    l.line?.gurmukhi?.unicode?.trim() &&
+    l.line?.translation?.english?.default?.trim()
+  );
+  if (!valid.length) throw new Error('No valid lines found');
+
+  const line = valid[Math.floor(Math.random() * valid.length)].line;
+  const page = data.shabadinfo?.pageno || '';
+
+  return {
+    ref:         `Guru Granth Sahib${page ? `, Ang ${page}` : ''}`,
+    chapter:     page || 1,
+    verse:       1,
+    sanskrit:    line.gurmukhi.unicode,   // Gurmukhi stored in sanskrit field
+    translation: line.translation.english.default
+  };
 }
 
 // ─── Quran — alquran.cloud (free, no API key) ───
@@ -169,9 +200,13 @@ Respond with ONLY valid JSON, no markdown:
 
 // ─── Tier 2: Gemini AI fallback (when real APIs fail) ───
 async function getGeminiVerse(source, seed) {
+  const isSikh  = source === 'Guru Granth Sahib';
   const isQuran = source === 'Quran';
   const isBible = source === 'Bible';
-  const prompt = isQuran
+  const prompt = isSikh
+    ? `Return a random line from the Guru Granth Sahib as JSON. Seed: ${seed}. ONLY JSON, no markdown:
+{"ref":"Guru Granth Sahib, Ang <pageNumber>","chapter":<pageNumber>,"verse":1,"sanskrit":"<Gurmukhi unicode text>","translation":"<English meaning>"}`
+    : isQuran
     ? `Return a random Quran ayah as JSON. Seed: ${seed}. ONLY JSON, no markdown:
 {"ref":"Surah <EnglishName> <surahNumber>:<ayahNumber>","chapter":<surahNum>,"verse":<ayahNum>,"sanskrit":"<Arabic text>","translation":"<English meaning>"}`
     : isBible
@@ -198,6 +233,17 @@ async function getGeminiVerse(source, seed) {
 }
 
 // ─── Tier 3: Hardcoded fallbacks (always works, no network needed) ───
+function sikhFallback() {
+  const options = [
+    { ref: 'Guru Granth Sahib, Ang 1',   chapter: 1,   verse: 1, sanskrit: 'ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ', translation: 'One Universal Creator God. The Name Is Truth. Creative Being Personified. No Fear. No Hatred.' },
+    { ref: 'Guru Granth Sahib, Ang 2',   chapter: 2,   verse: 1, sanskrit: 'ਸੋਚੈ ਸੋਚਿ ਨ ਹੋਵਈ ਜੇ ਸੋਚੀ ਲਖ ਵਾਰ', translation: 'By thinking, He cannot be reduced to thought, even by thinking hundreds of thousands of times.' },
+    { ref: 'Guru Granth Sahib, Ang 349', chapter: 349, verse: 1, sanskrit: 'ਭੈ ਕਾਹੂ ਕਉ ਦੇਤ ਨਹਿ ਨਹਿ ਭੈ ਮਾਨਤ ਆਨ', translation: 'One who does not frighten anyone, and who is not afraid of anyone — that person is called a true devotee of God.' },
+    { ref: 'Guru Granth Sahib, Ang 724', chapter: 724, verse: 1, sanskrit: 'ਜਿਉ ਜਿਉ ਚਲਹਿ ਠਾਕੁਰ ਕੀ ਵਾਟ', translation: 'Walk the path of your Lord and Master, step by step.' },
+    { ref: 'Guru Granth Sahib, Ang 278', chapter: 278, verse: 1, sanskrit: 'ਤੂ ਠਾਕੁਰੁ ਤੁਮ ਪਹਿ ਅਰਦਾਸਿ', translation: 'You are my Lord and Master; to You, I offer this prayer.' },
+  ];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
 function quranFallback() {
   const options = [
     { ref: 'Surah Al-Baqarah 2:286', chapter: 2, verse: 286, sanskrit: 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا', translation: 'Allah does not burden a soul beyond that it can bear.' },

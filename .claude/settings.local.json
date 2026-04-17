@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:api.alquran.cloud)"
+      "WebFetch(domain:api.alquran.cloud)",
+      "WebFetch(domain:api.gurbaninow.com)"
     ]
   }
 }

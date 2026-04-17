@@ -94,3 +94,13 @@ export const QUICK_PROMPTS_QURAN = [
   "I feel unmotivated",
   "How to find my purpose?"
 ];
+
+// ─── Sikhism ───
+export const QUICK_PROMPTS_SIKH = [
+  "I feel lost in life",
+  "How do I deal with failure?",
+  "I'm scared of the future",
+  "What does Gurbani say about fear?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];

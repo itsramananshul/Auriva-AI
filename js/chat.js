@@ -1,5 +1,5 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
-import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN } from './config.js';
+import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH } from './config.js';
 import { getProfile, getDailyVerse, showConfirm, sb } from './app.js';
 
 // ─── Markdown renderer ───
@@ -895,8 +895,9 @@ export function renderQuickChips() {
   const el = document.getElementById('quick-chips');
   if (!el) return;
   const source  = getProfile()?.source;
-  const prompts = source === 'Bible' ? QUICK_PROMPTS_BIBLE
-                : source === 'Quran' ? QUICK_PROMPTS_QURAN
+  const prompts = source === 'Bible'            ? QUICK_PROMPTS_BIBLE
+                : source === 'Quran'            ? QUICK_PROMPTS_QURAN
+                : source === 'Guru Granth Sahib'? QUICK_PROMPTS_SIKH
                 : QUICK_PROMPTS_GITA;
   el.innerHTML = prompts.map(p =>
     `<div class="chip" data-prompt="${p}">${p}</div>`

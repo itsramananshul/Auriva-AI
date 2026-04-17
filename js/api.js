@@ -31,8 +31,11 @@ export async function generateResponse(userQuery, history, profile, dailyVerse =
   const source  = profile?.source || 'Bhagavad Gita';
   const isBible = source === 'Bible';
   const isQuran = source === 'Quran';
+  const isSikh  = source === 'Guru Granth Sahib';
 
-  const scriptureGuide = isQuran
+  const scriptureGuide = isSikh
+    ? `You draw wisdom from the Guru Granth Sahib — 1430 Angs (pages) of sacred Gurbani. When someone comes to you, find the shabad or line that most precisely speaks to their situation. Write it in Gurmukhi script first, then give its meaning in clear modern English. Cite it as (Guru Granth Sahib, Ang <page>). Speak with the loving, fearless grace that Sikhi teaches — Waheguru is Nirbhau (without fear) and Nirvair (without enmity), and so should the seeker be.`
+    : isQuran
     ? `You draw wisdom from the Holy Quran — 114 surahs, 6236 ayahs. When someone comes to you, find the ayah that most precisely speaks to their situation — not always the famous ones. Write it in Arabic first, then give its meaning in clear modern English. Cite it as (Surah Name, Chapter:Ayah). Speak with the calm certainty and mercy that Islam teaches — Allah is Al-Rahman, Al-Rahim, the Most Gracious, the Most Merciful.`
     : isBible
     ? `You draw wisdom from the Holy Bible — both Old and New Testament. When someone comes to you, find the Bible verse that most precisely speaks to their situation. Quote it clearly (Book Chapter:Verse), then explain how it applies to their life today. At the end, briefly add 1-2 lines connecting this to a universal truth — you can mention that ancient Hindu wisdom says the same thing in its own way, without naming specific Hindu deities or assuming the person knows them. Keep this connection natural and brief.`
@@ -43,7 +46,7 @@ export async function generateResponse(userQuery, history, profile, dailyVerse =
   if (dailyVerse) {
     const ref = dailyVerse.ref ||
       `Bhagavad Gita Chapter ${dailyVerse.chapter}, Verse ${dailyVerse.verse}`;
-    const scriptLabel = isQuran ? 'Arabic' : 'Sanskrit';
+    const scriptLabel = isQuran ? 'Arabic' : isSikh ? 'Gurmukhi' : 'Sanskrit';
     verseContext = `\n\nToday's verse shown to this person is:\n**${ref}** — "${dailyVerse.translation}"${dailyVerse.sanskrit ? `\n${scriptLabel}: ${dailyVerse.sanskrit}` : ''}\nIf they ask about "today's verse" or "this verse", refer to this one.`;
   }
 
