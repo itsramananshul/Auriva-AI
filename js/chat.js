@@ -62,6 +62,9 @@ export async function initChat() {
   initVoiceInput();
   initVoiceMode();
 
+  // Show chips immediately so the UI is usable even if the DB is slow or unavailable
+  renderQuickChips();
+
   await loadRecents();
   await loadMostRecentChat();
 }

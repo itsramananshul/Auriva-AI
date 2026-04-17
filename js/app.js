@@ -8,16 +8,14 @@ import { initNavigation, loadDailyVerseCard, showPage } from './pages.js';
 // ordering issues on older Safari (iOS 15 on iPhone 7, etc.)
 let _sb = null;
 export function getSb() { return _sb; }
-// Kept for any direct import of `sb` elsewhere in this module
-export { _sb as sb };
 
 try {
   const cfg = await fetch('/api/app-config').then(r => r.json());
-  if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+  if (cfg?.supabaseUrl && cfg?.supabaseAnonKey) {
     _sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
   }
 } catch {
-  console.error('[Auriva] Could not load config. Run the app via `vercel dev`.');
+  console.error('[Auriva] Could not load config.');
 }
 
 // ─── Profile state ───
@@ -30,32 +28,31 @@ export const setDailyVerse = (v) => { _dailyVerse = v; };
 
 // ─── Boot ───
 async function boot() {
-  if (!_sb) return;
+  if (!_sb) {
+    // Config fetch failed — show a "could not connect" message instead of blank screen
+    const el = document.getElementById('mini-ref');
+    if (el) el.textContent = 'Could not connect — please refresh.';
+    return;
+  }
 
-  // Set up auth state listener FIRST — before any getSession() call.
-  // On old iOS (iPhone 7), signInWithPassword redirects to app.html before
-  // Supabase finishes writing the session to localStorage, so getSession()
-  // can return null for a brief moment. onAuthStateChange catches this case.
+  // onAuthStateChange fires:
+  //   INITIAL_SESSION — immediately on load with stored session (most common case on redirect)
+  //   SIGNED_IN       — after a fresh sign-in (fallback for timing edge cases)
+  //   SIGNED_OUT      — after signout
   _sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
+    if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user) {
       await handleSession(session.user);
     }
     if (event === 'SIGNED_OUT') {
       window.location.href = 'index.html';
     }
+    // INITIAL_SESSION with no session = not logged in
+    if (event === 'INITIAL_SESSION' && !session?.user) {
+      if (window.location.pathname.includes('app.html')) {
+        window.location.href = 'index.html';
+      }
+    }
   });
-
-  // Also check once immediately (covers the normal case where session is ready)
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session?.user) {
-    await handleSession(session.user);
-  } else if (window.location.pathname.includes('app.html')) {
-    // Session not found yet — give Supabase 1.5 s to fire SIGNED_IN via onAuthStateChange
-    // (handles iOS timing where localStorage write completes slightly after the page load)
-    setTimeout(() => {
-      if (!_appReady) window.location.href = 'index.html';
-    }, 1500);
-  }
 }
 
 async function handleSession(user) {
