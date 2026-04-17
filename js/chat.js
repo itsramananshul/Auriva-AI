@@ -115,7 +115,7 @@ function exitVoiceMode() {
 
 function startVMListening() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec || !_vmActive) return;
+  if (!SpeechRec || !_vmActive || _vmRec) return; // already running
 
   _vmText = '';
   setVMTranscript('');
@@ -127,12 +127,18 @@ function startVMListening() {
     rec.lang           = 'en-US';
 
     rec.onresult = (e) => {
-      // User spoke while AI is talking — interrupt immediately
-      if (window.speechSynthesis.speaking) {
+      // While AI is speaking: any speech = interrupt (works on Android/desktop)
+      if (_vmState === 'speaking') {
         window.speechSynthesis.cancel();
         clearInterval(_vmKeepAlive);
+        stopVAD();
+        _vmText = '';
+        setVMTranscript('');
         setVMState('listening');
+        return; // don't treat this as a message — wait for next utterance
       }
+
+      if (_vmState !== 'listening') return; // ignore during processing
 
       let text = '';
       for (let i = 0; i < e.results.length; i++) {
@@ -141,7 +147,6 @@ function startVMListening() {
       _vmText = text;
       setVMTranscript(text);
 
-      // Auto-send 1.5s after the last final result (natural pause)
       if (e.results[e.results.length - 1].isFinal) {
         clearTimeout(_vmSendTimer);
         _vmSendTimer = setTimeout(() => {
@@ -153,18 +158,24 @@ function startVMListening() {
 
     rec.onend = () => {
       _vmRec = null;
-      // Restart automatically if still listening (browser killed the session)
-      if (_vmActive && _vmState === 'listening') startVMListening();
+      if (!_vmActive || _vmState === 'processing') return;
+      // Auto-restart — browser may kill recognition during TTS on iOS
+      setTimeout(() => {
+        if (_vmActive && _vmState !== 'processing') startVMListening();
+      }, 300);
     };
 
     rec.onerror = (e) => {
-      if (e.error === 'aborted' || e.error === 'no-speech') return;
-      if (_vmActive && _vmState === 'listening') startVMListening();
+      if (e.error === 'aborted') return;
+      _vmRec = null;
+      setTimeout(() => {
+        if (_vmActive && _vmState !== 'processing') startVMListening();
+      }, 500);
     };
 
     rec.start();
     _vmRec = rec;
-    setVMState('listening');
+    if (_vmState !== 'speaking') setVMState('listening');
   } catch {
     setVMState('idle');
   }
