@@ -316,6 +316,12 @@ export function getSymbol(source) {
   if (source === 'Agamas')            return 'ॐ';
   if (source === 'Analects')          return '仁';
   if (source === 'Kitab-i-Aqdas')     return '✦';
+  if (source === 'Avesta')            return '☀';
+  if (source === 'Kojiki')            return '⛩';
+  if (source === 'Poetic Edda')       return 'ᚢ';
+  if (source === 'Meditations')       return 'Σ';
+  if (source === 'Book of the Dead')  return '☥';
+  if (source === 'Theogony')          return 'Ω';
   return '॥';
 }
 

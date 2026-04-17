@@ -3,7 +3,9 @@ import {
   CHAPTER_NAMES, VERSE_COUNTS, BIBLE_BOOKS,
   DHAMMAPADA_CHAPTERS, DHAMMAPADA_VERSE_COUNTS,
   TAO_CHAPTERS, TORAH_BOOKS, JAIN_TEXTS,
-  ANALECTS_BOOKS, BAHAI_TEXTS
+  ANALECTS_BOOKS, BAHAI_TEXTS,
+  AVESTA_TEXTS, SHINTO_TEXTS, NORSE_TEXTS,
+  STOIC_TEXTS, EGYPT_TEXTS, GREEK_TEXTS
 } from './config.js';
 import { getProfile, setDailyVerse } from './app.js';
 
@@ -72,6 +74,12 @@ export function showPage(name) {
     : source === 'Agamas'          ? 'Jain Agamas'
     : source === 'Analects'        ? 'Analects'
     : source === 'Kitab-i-Aqdas'   ? 'Bahá\'í Texts'
+    : source === 'Avesta'          ? 'Avesta'
+    : source === 'Kojiki'          ? 'Kojiki'
+    : source === 'Poetic Edda'     ? 'Poetic Edda'
+    : source === 'Meditations'     ? 'Stoic Texts'
+    : source === 'Book of the Dead'? 'Egyptian Texts'
+    : source === 'Theogony'        ? 'Greek Texts'
     : 'Scriptures';
   const titles = {
     seek:       `Seek <span>Wisdom</span>`,
@@ -198,6 +206,60 @@ function renderScriptures() {
           <div class="sc-count">${t.desc}</div>
         </div>`).join('');
 
+  } else if (source === 'Avesta') {
+    grid.innerHTML = `<div class="sc-testament-label">Sacred Zoroastrian Texts</div>` +
+      AVESTA_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Kojiki') {
+    grid.innerHTML = `<div class="sc-testament-label">Sacred Shinto Texts</div>` +
+      SHINTO_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Poetic Edda') {
+    grid.innerHTML = `<div class="sc-testament-label">The Poetic Edda</div>` +
+      NORSE_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Poem</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Meditations') {
+    grid.innerHTML = `<div class="sc-testament-label">Stoic Texts</div>` +
+      STOIC_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Book of the Dead') {
+    grid.innerHTML = `<div class="sc-testament-label">Ancient Egyptian Texts</div>` +
+      EGYPT_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
+  } else if (source === 'Theogony') {
+    grid.innerHTML = `<div class="sc-testament-label">Greek Sacred Texts</div>` +
+      GREEK_TEXTS.map(t => `
+        <div class="sc-card" data-generic="${t.name}">
+          <div class="sc-ch">Text</div>
+          <div class="sc-title">${t.name}</div>
+          <div class="sc-count">${t.desc}</div>
+        </div>`).join('');
+
   } else {
     // Default: Bhagavad Gita (also for Shiva Purana, Devi Mahatmya, Ramayana — show Gita chapters as the core Hindu framework)
     grid.innerHTML = CHAPTER_NAMES.map((name, i) => `
@@ -230,6 +292,8 @@ function renderScriptures() {
         input.value = `Tell me about Book ${b} of the Analects: ${ANALECTS_BOOKS[b-1]}`;
       } else if (card.dataset.bahai) {
         input.value = `Tell me about the ${card.dataset.bahai} and its key teachings`;
+      } else if (card.dataset.generic) {
+        input.value = `Tell me about the ${card.dataset.generic} and its key teachings`;
       }
 
       document.getElementById('send-btn')?.click();

@@ -2,7 +2,9 @@ import { fetchRandomVerse, generateResponse } from './api.js';
 import {
   QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH,
   QUICK_PROMPTS_BUDDHA, QUICK_PROMPTS_TAO, QUICK_PROMPTS_TORAH,
-  QUICK_PROMPTS_JAIN, QUICK_PROMPTS_CONFUCIUS, QUICK_PROMPTS_BAHAI
+  QUICK_PROMPTS_JAIN, QUICK_PROMPTS_CONFUCIUS, QUICK_PROMPTS_BAHAI,
+  QUICK_PROMPTS_ZOROASTER, QUICK_PROMPTS_SHINTO, QUICK_PROMPTS_NORSE,
+  QUICK_PROMPTS_STOIC, QUICK_PROMPTS_EGYPT, QUICK_PROMPTS_GREEK
 } from './config.js';
 import { getProfile, getDailyVerse, showConfirm, getSb, getSymbol } from './app.js';
 
@@ -1005,6 +1007,12 @@ export function renderQuickChips() {
                 : source === 'Agamas'             ? QUICK_PROMPTS_JAIN
                 : source === 'Analects'           ? QUICK_PROMPTS_CONFUCIUS
                 : source === 'Kitab-i-Aqdas'      ? QUICK_PROMPTS_BAHAI
+                : source === 'Avesta'             ? QUICK_PROMPTS_ZOROASTER
+                : source === 'Kojiki'             ? QUICK_PROMPTS_SHINTO
+                : source === 'Poetic Edda'        ? QUICK_PROMPTS_NORSE
+                : source === 'Meditations'        ? QUICK_PROMPTS_STOIC
+                : source === 'Book of the Dead'   ? QUICK_PROMPTS_EGYPT
+                : source === 'Theogony'           ? QUICK_PROMPTS_GREEK
                 : QUICK_PROMPTS_GITA;
   el.innerHTML = prompts.map(p =>
     `<div class="chip" data-prompt="${p}">${p}</div>`

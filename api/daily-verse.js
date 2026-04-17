@@ -209,7 +209,19 @@ async function getGeminiVerse(source, seed) {
     'Analects':
       `Return a meaningful passage from the Analects of Confucius as JSON. Seed: ${seed}. Spread across all 20 books. ONLY JSON, no markdown:\n{"ref":"Analects <book>:<chapter>","chapter":<book>,"verse":<chapter>,"sanskrit":"<Classical Chinese>","translation":"<English rendering>"}`,
     'Kitab-i-Aqdas':
-      `Return a meaningful verse or passage from the writings of Bahá'u'lláh (Kitáb-i-Aqdas, Hidden Words, Gleanings, etc.) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Text name>, verse/paragraph <n>","chapter":1,"verse":1,"sanskrit":"","translation":"<English text>"}`
+      `Return a meaningful verse or passage from the writings of Bahá'u'lláh (Kitáb-i-Aqdas, Hidden Words, Gleanings, etc.) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Text name>, verse/paragraph <n>","chapter":1,"verse":1,"sanskrit":"","translation":"<English text>"}`,
+    'Avesta':
+      `Return a meaningful verse or teaching from the Zoroastrian Avesta (especially the Gathas of Zarathustra) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"Avesta, <text name and section>","chapter":1,"verse":1,"sanskrit":"<Avestan original if available, else empty>","translation":"<English meaning>"}`,
+    'Kojiki':
+      `Return a meaningful passage, myth, or teaching from the Shinto tradition (Kojiki, Nihon Shoki, Norito prayers, or kami wisdom) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Source, section>","chapter":1,"verse":1,"sanskrit":"<Japanese original in romaji if applicable, else empty>","translation":"<English meaning>"}`,
+    'Poetic Edda':
+      `Return a meaningful stanza from the Poetic Edda (Hávamál, Völuspá, Grímnismál, or other eddic poems) as JSON. Seed: ${seed}. Vary across the texts. ONLY JSON, no markdown:\n{"ref":"<Poem name>, stanza <n>","chapter":1,"verse":<stanza>,"sanskrit":"<Old Norse original>","translation":"<English rendering>"}`,
+    'Meditations':
+      `Return a meaningful passage from the Stoic tradition (Marcus Aurelius Meditations, Epictetus Enchiridion or Discourses, or Seneca Letters/essays) as JSON. Seed: ${seed}. Vary across all sources. ONLY JSON, no markdown:\n{"ref":"<Author, Work Book.Chapter or Letter N>","chapter":<book>,"verse":<chapter>,"sanskrit":"<Latin or Greek original if brief, else empty>","translation":"<English rendering>"}`,
+    'Book of the Dead':
+      `Return a meaningful spell, verse, or teaching from ancient Egyptian sacred texts (Book of the Dead, Pyramid Texts, Maxims of Ptahhotep, or Hymn to Ra) as JSON. Seed: ${seed}. ONLY JSON, no markdown:\n{"ref":"<Source, Spell/Chapter/Maxim N>","chapter":1,"verse":1,"sanskrit":"<Transliterated Egyptian if applicable, else empty>","translation":"<English meaning>"}`,
+    'Theogony':
+      `Return a meaningful passage from ancient Greek sacred literature (Theogony, Works and Days, Iliad, Odyssey, Homeric Hymns, or a Platonic dialogue) as JSON. Seed: ${seed}. Vary across sources. ONLY JSON, no markdown:\n{"ref":"<Author, Work Book:Line or section>","chapter":1,"verse":1,"sanskrit":"<Transliterated Greek if brief, else empty>","translation":"<English rendering>"}`
   };
 
   // Default Gemini prompt (covers Quran, Bible, Sikh, Gita if somehow they reach here)
@@ -295,6 +307,40 @@ function getHardcodedFallback(source) {
       { ref: 'Kitáb-i-Aqdas, verse 2',  chapter: 1, verse: 3, sanskrit: '', translation: 'The first duty prescribed by God for His servants is the recognition of Him Who is the Dayspring of His Revelation and the Fountain of His laws.' },
     ],
   };
+
+    'Avesta': [
+      { ref: 'Avesta — Zoroastrian teaching', chapter: 1, verse: 1, sanskrit: 'Humata. Hukhta. Hvarshta.', translation: 'Good thoughts. Good words. Good deeds. This is the entire teaching of Zarathustra.' },
+      { ref: 'Gathas, Yasna 30:3', chapter: 30, verse: 3, sanskrit: '', translation: 'In the beginning there were two spirits, twins renowned to be in conflict. In thought and word and act they are two: the good and the bad.' },
+      { ref: 'Gathas, Yasna 43:1', chapter: 43, verse: 1, sanskrit: '', translation: 'Through the best Asha, through the highest Asha, may we catch sight of Thee, may we come close to Thee, may we be in perfect union with Thee.' },
+    ],
+    'Kojiki': [
+      { ref: 'Shinto teaching', chapter: 1, verse: 1, sanskrit: 'Makoto no kokoro.', translation: 'A sincere heart. In Shinto, sincerity and purity of heart is what connects us to the kami.' },
+      { ref: 'Kojiki — Shinto teaching', chapter: 1, verse: 2, sanskrit: '', translation: 'The kami are not only in shrines. They are in the mountains, the rivers, the rain, and the silence between words. To live with awareness is to live with the kami.' },
+      { ref: 'Norito prayer', chapter: 1, verse: 3, sanskrit: 'Harae tamae, kiyome tamae.', translation: 'Purify me, cleanse me. The Shinto path begins with purification — of thought, of intention, of the space we inhabit.' },
+    ],
+    'Poetic Edda': [
+      { ref: 'Hávamál, stanza 77', chapter: 1, verse: 77, sanskrit: 'Deyr fé, deyja frændr, deyr sjálfr it sama;', translation: 'Cattle die, kinsmen die, the self must also die; but the glory of a good name never dies.' },
+      { ref: 'Hávamál, stanza 76', chapter: 1, verse: 76, sanskrit: 'Deyr fé, deyja frændr, deyr sjálfr it sama;', translation: 'Cattle die, kinsmen die, you too will die — I know one thing that never dies: the reputation of a man who has done great deeds.' },
+      { ref: 'Hávamál, stanza 1', chapter: 1, verse: 1, sanskrit: 'Gáttir allar, áðr gangi fram, um skoðask skyli,', translation: 'Before you enter, look around at every doorway. You cannot know where enemies sit waiting in the hall.' },
+      { ref: 'Hávamál, stanza 23', chapter: 1, verse: 23, sanskrit: '', translation: 'The foolish man lies awake all night thinking about everything. When morning comes he is worn out — and the problem remains unchanged.' },
+    ],
+    'Meditations': [
+      { ref: 'Marcus Aurelius, Meditations 6.3', chapter: 6, verse: 3, sanskrit: '', translation: 'You have power over your mind, not outside events. Realize this, and you will find strength.' },
+      { ref: 'Marcus Aurelius, Meditations 2.1', chapter: 2, verse: 1, sanskrit: '', translation: 'Begin each day by telling yourself: today I shall meet people who are meddling, ungrateful, arrogant, dishonest, jealous. But I have seen the beauty of good, and the ugliness of evil, and know that the wrongdoer has a nature related to my own.' },
+      { ref: 'Epictetus, Enchiridion 1', chapter: 1, verse: 1, sanskrit: '', translation: 'Some things are in our control and others are not. Things in our control are opinion, pursuit, desire, aversion. Things not in our control are body, reputation, command, and in a word, whatever are not our own actions.' },
+      { ref: 'Seneca, Letters 1.1', chapter: 1, verse: 1, sanskrit: '', translation: 'Reclaim yourself for yourself. The time that has passed is gone. The present time is minimal. The future is uncertain. Only now is yours.' },
+    ],
+    'Book of the Dead': [
+      { ref: 'Book of the Dead, Spell 125', chapter: 125, verse: 1, sanskrit: '', translation: 'I have not done wrong. I have not stolen. I have not told lies. I have not caused pain. My heart is pure.' },
+      { ref: 'Maxims of Ptahhotep, Maxim 5', chapter: 5, verse: 1, sanskrit: '', translation: 'How hard and painful are the last hours of an aged man. He grows weaker every day. Yet do not treat the old man with disrespect — he has seen what you have not yet seen.' },
+      { ref: 'Book of the Dead, Spell 17', chapter: 17, verse: 1, sanskrit: '', translation: 'I am yesterday and I know tomorrow. I am the same soul in every living creature.' },
+    ],
+    'Theogony': [
+      { ref: 'Socrates (Plato, Apology)', chapter: 1, verse: 1, sanskrit: '', translation: 'The unexamined life is not worth living. Know thyself — this is the beginning of all wisdom.' },
+      { ref: 'Hesiod, Works and Days 289', chapter: 1, verse: 289, sanskrit: '', translation: 'The road to virtue is long and steep and rough at first. But once you reach the top, it is easy, though it was hard.' },
+      { ref: 'Homer, Odyssey 1.3', chapter: 1, verse: 3, sanskrit: '', translation: 'He saw the cities of many peoples and learned their minds; he suffered many sorrows at sea while trying to save his own life and bring his men home.' },
+      { ref: 'Plato, Symposium', chapter: 1, verse: 1, sanskrit: '', translation: 'Love is the name for the desire and pursuit of the whole.' },
+    ],
 
   // Hindu sources that don't have specific Tier 1 APIs — use Gita fallbacks
   const gitaFallbacks = [

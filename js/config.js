@@ -241,3 +241,112 @@ export const QUICK_PROMPTS_BAHAI = [
   "I feel unmotivated",
   "How to find my purpose?"
 ];
+
+// ─── Zoroastrianism ───
+export const AVESTA_TEXTS = [
+  { name: 'Gathas',        desc: 'Hymns composed by Zarathustra himself' },
+  { name: 'Yasna',         desc: 'Liturgical texts of worship' },
+  { name: 'Visperad',      desc: 'Supplements to the Yasna' },
+  { name: 'Vendidad',      desc: 'Laws of purity and righteousness' },
+  { name: 'Khorda Avesta', desc: 'The small Avesta — daily prayers' },
+  { name: 'Yashts',        desc: 'Hymns to the divine beings (Yazatas)' },
+];
+export const QUICK_PROMPTS_ZOROASTER = [
+  "I feel lost in life",
+  "How do I choose the right path?",
+  "I'm struggling with difficult choices",
+  "What does Zarathustra say about truth?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Shinto ───
+export const SHINTO_TEXTS = [
+  { name: 'Kojiki',      desc: 'Record of Ancient Matters — creation & the kami' },
+  { name: 'Nihon Shoki', desc: 'Chronicles of Japan — history & myth' },
+  { name: 'Norito',      desc: 'Ancient ritual prayers and invocations' },
+  { name: 'Manyoshu',   desc: 'Collection of Ten Thousand Leaves — sacred poetry' },
+];
+export const QUICK_PROMPTS_SHINTO = [
+  "I feel disconnected from nature",
+  "How do I find harmony in life?",
+  "I'm struggling to be present",
+  "What do the kami say about gratitude?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Norse Paganism ───
+export const NORSE_TEXTS = [
+  { name: 'Völuspá',     desc: 'The Prophecy of the Seeress — creation and fate' },
+  { name: 'Hávamál',    desc: "Sayings of the High One — Odin's wisdom" },
+  { name: 'Grímnismál', desc: 'The Lay of Grímnir — the hidden world' },
+  { name: 'Skírnismál', desc: 'The Lay of Skírnir — desire and consequence' },
+  { name: 'Lokasenna',  desc: 'The truths no one wants to hear' },
+  { name: 'Sigrdrífumál',desc: 'Runes and the wisdom of the valkyrie' },
+  { name: 'Prose Edda', desc: 'Snorri\'s retelling of Norse mythology' },
+];
+export const QUICK_PROMPTS_NORSE = [
+  "I feel lost in life",
+  "How do I face hardship with courage?",
+  "I'm scared of what lies ahead",
+  "What does Odin say about wisdom?",
+  "I feel like giving up",
+  "How do I find my purpose?"
+];
+
+// ─── Stoicism ───
+export const STOIC_TEXTS = [
+  { name: 'Meditations',              desc: 'Marcus Aurelius — private notes to himself' },
+  { name: 'Enchiridion',              desc: 'Epictetus — the handbook of Stoic practice' },
+  { name: 'Letters to Lucilius',      desc: 'Seneca — wisdom letters on how to live' },
+  { name: 'Discourses',               desc: 'Epictetus — teachings recorded by Arrian' },
+  { name: 'On the Happy Life',        desc: 'Seneca — what true happiness really is' },
+  { name: 'On Tranquility of Mind',   desc: 'Seneca — inner peace despite outer chaos' },
+  { name: 'On the Shortness of Life', desc: 'Seneca — time, attention, and how we live' },
+];
+export const QUICK_PROMPTS_STOIC = [
+  "I can't control what's happening around me",
+  "How do I deal with failure?",
+  "I'm scared of the future",
+  "What did Marcus Aurelius say about anger?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Ancient Egyptian ───
+export const EGYPT_TEXTS = [
+  { name: 'Book of the Dead',    desc: 'Spells and wisdom for the journey of the soul' },
+  { name: 'Pyramid Texts',       desc: 'Oldest religious texts in the world' },
+  { name: 'Coffin Texts',        desc: 'Spells for resurrection and protection' },
+  { name: 'Amduat',              desc: 'The nightly journey through the underworld' },
+  { name: 'Maxims of Ptahhotep', desc: 'Ancient wisdom for righteous living' },
+  { name: 'Hymn to the Aten',    desc: "Akhenaten's great hymn to the sun disk" },
+];
+export const QUICK_PROMPTS_EGYPT = [
+  "I feel lost in life",
+  "How do I deal with loss?",
+  "I'm scared of the unknown",
+  "What does Ma'at say about truth?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
+
+// ─── Greek / Olympian ───
+export const GREEK_TEXTS = [
+  { name: 'Theogony',       desc: 'Hesiod — the birth of the gods and the cosmos' },
+  { name: 'Works and Days', desc: 'Hesiod — justice, labor, and the human condition' },
+  { name: 'Iliad',          desc: 'Homer — glory, war, fate, and what it means to be human' },
+  { name: 'Odyssey',        desc: 'Homer — the long journey home' },
+  { name: 'Homeric Hymns',  desc: 'Sacred songs to the Olympian gods' },
+  { name: 'Symposium',      desc: 'Plato — love, beauty, and the divine' },
+  { name: 'Phaedo',         desc: 'Plato — the soul, death, and what lies beyond' },
+];
+export const QUICK_PROMPTS_GREEK = [
+  "I feel lost in life",
+  "How do I live with wisdom and virtue?",
+  "I'm struggling with my fate",
+  "What did Socrates say about the good life?",
+  "I feel unmotivated",
+  "How to find my purpose?"
+];
