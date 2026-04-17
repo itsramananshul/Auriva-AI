@@ -1,9 +1,9 @@
-html, body { overflow: hidden; height: 100dvh; }
+html, body { overflow: hidden; height: 100vh; height: 100dvh; }
 
 .layout {
   display: grid;
   grid-template-columns: 250px 1fr;
-  height: 100dvh;
+  height: 100vh; height: 100dvh;
 }
 
 /* ── SIDEBAR ── */
@@ -164,7 +164,7 @@ html, body { overflow: hidden; height: 100dvh; }
   flex-direction: column;
   background: var(--black);
   overflow: hidden;
-  height: 100dvh;
+  height: 100vh; height: 100dvh;
   min-height: 0;
 }
 
@@ -226,7 +226,7 @@ html, body { overflow: hidden; height: 100dvh; }
     left: -290px;
     top: 0;
     width: 280px;
-    height: 100dvh;
+    height: 100vh; height: 100dvh;
     z-index: 300;
     transition: left 0.28s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,0.6);
@@ -260,7 +260,7 @@ html, body { overflow: hidden; height: 100dvh; }
 
   /* Main fills screen — strict overflow clipping at every level */
   .main {
-    height: 100dvh;
+    height: 100vh; height: 100dvh;
     overflow: hidden;
     width: 100%;
     max-width: 100vw;

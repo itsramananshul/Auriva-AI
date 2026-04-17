@@ -1,6 +1,6 @@
 import { fetchRandomVerse, generateResponse } from './api.js';
 import { QUICK_PROMPTS_GITA, QUICK_PROMPTS_BIBLE, QUICK_PROMPTS_QURAN, QUICK_PROMPTS_SIKH } from './config.js';
-import { getProfile, getDailyVerse, showConfirm, sb, getSymbol } from './app.js';
+import { getProfile, getDailyVerse, showConfirm, getSb, getSymbol } from './app.js';
 
 // ─── Markdown renderer ───
 function renderMarkdown(text) {
@@ -318,9 +318,30 @@ function speakVMResponse(text) {
   if (_isMobile) {
     // ── Mobile path (iOS + Android) ──
     // iOS: system kills SpeechRecognition during TTS anyway.
-    // Android: speaker bleeds into mic → onresult fires with AI's own words → self-interrupts.
-    // Fix for both: don't run recognition during TTS. Tap orb to interrupt.
-    // onDone restarts listening automatically when TTS finishes.
+    // Android: speaker bleeds into mic → self-interrupts. Don't run recognition during TTS.
+    // Tap orb to interrupt. onDone restarts listening when TTS finishes.
+    //
+    // Android also has a known bug where speechSynthesis.onend never fires.
+    // Add a timeout fallback based on estimated speech duration so we never get stuck.
+    const wordCount = clean.split(/\s+/).length;
+    const estimatedMs = Math.max(wordCount / 2.5 * 1000, 3000) + 4000; // generous buffer
+    let ttsTimedOut = false;
+    const ttsTimeout = setTimeout(() => {
+      if (_vmState === 'speaking' && _vmActive) {
+        ttsTimedOut = true;
+        window.speechSynthesis.cancel();
+        onDone();
+      }
+    }, estimatedMs);
+
+    const wrappedOnDone = () => {
+      if (ttsTimedOut) return; // already handled
+      clearTimeout(ttsTimeout);
+      onDone();
+    };
+    utterance.onend   = wrappedOnDone;
+    utterance.onerror = wrappedOnDone;
+
     window.speechSynthesis.speak(utterance);
   } else {
     // ── Desktop path ──
@@ -586,11 +607,11 @@ export async function startNewChat() {
 }
 
 async function loadMostRecentChat() {
-  if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
+  if (!getSb()) return;
+  const { data: { session } } = await getSb().auth.getSession();
   if (!session?.user) return;
 
-  const { data: chats } = await sb
+  const { data: chats } = await getSb()
     .from('chats')
     .select('id')
     .eq('user_id', session.user.id)
@@ -605,14 +626,14 @@ async function loadMostRecentChat() {
 }
 
 export async function loadChat(chatId) {
-  if (!sb) return;
+  if (!getSb()) return;
   _currentChatId = chatId;
   _history = [];
 
   const container = document.getElementById('chat-messages');
   if (container) container.innerHTML = '';
 
-  const { data: msgs } = await sb
+  const { data: msgs } = await getSb()
     .from('messages')
     .select('*')
     .eq('chat_id', chatId)
@@ -644,11 +665,11 @@ export async function loadChat(chatId) {
 
 // ─── Create chat lazily on first message ───
 async function createChat() {
-  if (!sb) return null;
-  const { data: { session } } = await sb.auth.getSession();
+  if (!getSb()) return null;
+  const { data: { session } } = await getSb().auth.getSession();
   if (!session?.user) return null;
 
-  const { data: chat } = await sb
+  const { data: chat } = await getSb()
     .from('chats')
     .insert({ user_id: session.user.id, title: 'New Chat' })
     .select()
@@ -669,9 +690,9 @@ async function createChat() {
 }
 
 async function titleChat(text) {
-  if (!_currentChatId || !sb) return;
+  if (!_currentChatId || !getSb()) return;
   const title = text.slice(0, 35).trimEnd() + (text.length > 35 ? '…' : '');
-  await sb.from('chats').update({ title }).eq('id', _currentChatId);
+  await getSb().from('chats').update({ title }).eq('id', _currentChatId);
 
   const el = document.querySelector(`.recents-item[data-chat-id="${_currentChatId}"]`);
   if (el) {
@@ -682,11 +703,11 @@ async function titleChat(text) {
 
 // ─── Recents ───
 export async function loadRecents() {
-  if (!sb) return;
-  const { data: { session } } = await sb.auth.getSession();
+  if (!getSb()) return;
+  const { data: { session } } = await getSb().auth.getSession();
   if (!session?.user) return;
 
-  const { data: chats } = await sb
+  const { data: chats } = await getSb()
     .from('chats')
     .select('id, title')
     .eq('user_id', session.user.id)
@@ -730,13 +751,13 @@ function makeRecentEl(chatId, title) {
 }
 
 async function deleteChat(chatId, el) {
-  if (!sb) return;
+  if (!getSb()) return;
 
   const confirmed = await showConfirm('This cannot be undone.', 'Delete this chat?');
   if (!confirmed) return;
 
-  await sb.from('messages').delete().eq('chat_id', chatId);
-  await sb.from('chats').delete().eq('id', chatId);
+  await getSb().from('messages').delete().eq('chat_id', chatId);
+  await getSb().from('chats').delete().eq('id', chatId);
 
   el.remove();
 
@@ -898,14 +919,14 @@ async function handleEditMessage(msgEl) {
   _history = keptHistory;
 
   // Sync DB: wipe all messages in this chat, re-insert only what's kept
-  if (sb && _currentChatId) {
+  if (getSb() && _currentChatId) {
     try {
-      const { data: { session } } = await sb.auth.getSession();
+      const { data: { session } } = await getSb().auth.getSession();
       if (session?.user) {
-        await sb.from('messages').delete().eq('chat_id', _currentChatId);
+        await getSb().from('messages').delete().eq('chat_id', _currentChatId);
 
         if (keptHistory.length) {
-          await sb.from('messages').insert(
+          await getSb().from('messages').insert(
             keptHistory.map(m => ({
               user_id:    session.user.id,
               chat_id:    _currentChatId,
@@ -958,11 +979,11 @@ export function renderQuickChips() {
 
 // ─── Persist ───
 async function saveMessage(role, content, verse = null) {
-  if (!sb || !_currentChatId) return;
-  const { data: { session } } = await sb.auth.getSession();
+  if (!getSb() || !_currentChatId) return;
+  const { data: { session } } = await getSb().auth.getSession();
   if (!session?.user) return;
 
-  await sb.from('messages').insert({
+  await getSb().from('messages').insert({
     user_id:    session.user.id,
     chat_id:    _currentChatId,
     role,

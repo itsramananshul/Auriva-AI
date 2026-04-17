@@ -4,8 +4,13 @@ import { initChat, appendMsg, loadRecents } from './chat.js';
 import { initNavigation, loadDailyVerseCard, showPage } from './pages.js';
 
 // ─── Supabase client (shared) ───
-// Keys are loaded from the server — run via `vercel dev` locally
+// getSb() is a function export so it survives circular-dep + top-level-await
+// ordering issues on older Safari (iOS 15 on iPhone 7, etc.)
 let _sb = null;
+export function getSb() { return _sb; }
+// Kept for any direct import of `sb` elsewhere in this module
+export { _sb as sb };
+
 try {
   const cfg = await fetch('/api/app-config').then(r => r.json());
   if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
@@ -14,7 +19,6 @@ try {
 } catch {
   console.error('[Auriva] Could not load config. Run the app via `vercel dev`.');
 }
-export const sb = _sb;
 
 // ─── Profile state ───
 let _profile = null;
@@ -26,18 +30,13 @@ export const setDailyVerse = (v) => { _dailyVerse = v; };
 
 // ─── Boot ───
 async function boot() {
-  if (!sb) return;
+  if (!_sb) return;
 
-  // Check session once on page load
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    await handleSession(session.user);
-  } else if (window.location.pathname.includes('app.html')) {
-    window.location.href = 'index.html';
-  }
-
-  // Then listen only for live login / logout events
-  sb.auth.onAuthStateChange(async (event, session) => {
+  // Set up auth state listener FIRST — before any getSession() call.
+  // On old iOS (iPhone 7), signInWithPassword redirects to app.html before
+  // Supabase finishes writing the session to localStorage, so getSession()
+  // can return null for a brief moment. onAuthStateChange catches this case.
+  _sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       await handleSession(session.user);
     }
@@ -45,10 +44,22 @@ async function boot() {
       window.location.href = 'index.html';
     }
   });
+
+  // Also check once immediately (covers the normal case where session is ready)
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session?.user) {
+    await handleSession(session.user);
+  } else if (window.location.pathname.includes('app.html')) {
+    // Session not found yet — give Supabase 1.5 s to fire SIGNED_IN via onAuthStateChange
+    // (handles iOS timing where localStorage write completes slightly after the page load)
+    setTimeout(() => {
+      if (!_appReady) window.location.href = 'index.html';
+    }, 1500);
+  }
 }
 
 async function handleSession(user) {
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  const { data: profile } = await _sb.from('profiles').select('*').eq('id', user.id).single();
 
   if (!profile?.onboarded) {
     // Redirect to onboarding
@@ -138,11 +149,11 @@ export function initOnboarding() {
     btn.disabled = true; btn.textContent = 'Saving...';
 
     try {
-      if (!sb) throw new Error('Not connected — check environment variables in Vercel.');
-      const { data: { session } } = await sb.auth.getSession();
+      if (!_sb) throw new Error('Not connected — check environment variables in Vercel.');
+      const { data: { session } } = await _sb.auth.getSession();
       if (!session?.user) throw new Error('Not logged in.');
 
-      const { error } = await sb.from('profiles').upsert({
+      const { error } = await _sb.from('profiles').upsert({
         id: session.user.id,
         full_name: session.user.user_metadata?.full_name || '',
         deity: selectedDeity.name,
@@ -221,7 +232,7 @@ function initProfileEdit(user) {
   overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 
   saveBtn?.addEventListener('click', async () => {
-    if (!sb) return;
+    if (!_sb) return;
     const [deity, source] = (deitySelect.value || '').split('|');
     const name = nameInput.value.trim();
     const lang = langSelect.value;
@@ -233,7 +244,7 @@ function initProfileEdit(user) {
     errEl.textContent = '';
 
     try {
-      const { error } = await sb.from('profiles').update({
+      const { error } = await _sb.from('profiles').update({
         full_name: name, deity, source, language: lang
       }).eq('id', user.id);
 
