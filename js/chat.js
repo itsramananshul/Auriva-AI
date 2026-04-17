@@ -284,8 +284,12 @@ async function startVAD() {
   if (_vadStream) return;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    _vadStream   = stream;
-    _vadCtx      = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Voice mode may have been exited while waiting for mic permission
+    if (!_vmActive) { stream.getTracks().forEach(t => t.stop()); return; }
+
+    _vadStream = stream;
+    _vadCtx    = new (window.AudioContext || window.webkitAudioContext)();
     const source   = _vadCtx.createMediaStreamSource(stream);
     const analyser = _vadCtx.createAnalyser();
     analyser.fftSize               = 512;
@@ -294,8 +298,6 @@ async function startVAD() {
     const data = new Uint8Array(analyser.frequencyBinCount);
 
     // ── Calibrate noise floor (500ms) ──
-    // Sample ambient sound (background music, room noise) to set a personalised
-    // threshold — so only something significantly louder triggers the interrupt
     const samples = [];
     await new Promise(resolve => {
       const cal = setInterval(() => {
@@ -305,13 +307,15 @@ async function startVAD() {
       setTimeout(() => { clearInterval(cal); resolve(); }, 500);
     });
 
+    // Voice mode may have been exited during calibration — bail out cleanly
+    if (!_vmActive || !_vadStream) { stopVAD(); return; }
+
     const noiseFloor = samples.reduce((a, b) => a + b, 0) / samples.length;
-    // Voice must be 2× louder than the background to trigger — handles music/TV/etc.
     const threshold  = Math.max(noiseFloor * 2.0, 20);
 
     let ticks = 0;
     _vadInterval = setInterval(() => {
-      if (!_vadStream) { clearInterval(_vadInterval); return; }
+      if (!_vmActive || !_vadStream) { clearInterval(_vadInterval); return; }
       analyser.getByteFrequencyData(data);
       const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length);
 
@@ -320,10 +324,11 @@ async function startVAD() {
         if (ticks >= 3 && _vmState === 'speaking') {
           window.speechSynthesis.cancel();
           clearInterval(_vmKeepAlive);
-          stopVAD();
+          stopVAD(); // release mic FIRST
           _vmText = '';
           setVMState('listening');
-          startVMListening();
+          // Small delay so the mic is fully released before SpeechRecognition grabs it
+          setTimeout(() => { if (_vmActive) startVMListening(); }, 250);
         }
       } else {
         ticks = 0;
